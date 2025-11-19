@@ -33,5 +33,5 @@ public class Gallery {
     @Column(name = "admin_comment")
     private String adminComment;
 
-
+//
 }
