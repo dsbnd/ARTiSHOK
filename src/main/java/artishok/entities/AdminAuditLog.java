@@ -1,4 +1,4 @@
-package lab1.entities;
+package artishok.entities;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -9,6 +9,7 @@ public class AdminAuditLog {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+	
 	// Только когда явно обращаемся - тогда загружается
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "admin_id")

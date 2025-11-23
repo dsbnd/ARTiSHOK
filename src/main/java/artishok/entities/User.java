@@ -1,7 +1,8 @@
-package lab1.entities;
+package artishok.entities;
 
 import java.time.LocalDateTime;
 
+import artishok.entities.enums.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lab1.entities.enums.UserRole;
 
 @Entity
 @Table(name = "users")

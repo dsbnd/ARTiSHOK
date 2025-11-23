@@ -1,13 +1,14 @@
-package lab1.entities;
+package artishok.entities;
 
 import jakarta.persistence.*;
-import lab1.entities.enums.StandStatus;
-import lab1.entities.enums.StandType;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import artishok.entities.enums.StandStatus;
+import artishok.entities.enums.StandType;
 
 @Entity
 @Table(name = "exhibition_stand")

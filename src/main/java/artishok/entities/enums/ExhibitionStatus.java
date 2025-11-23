@@ -1,4 +1,4 @@
-package lab1.entities.enums;
+package artishok.entities.enums;
 
 public enum ExhibitionStatus {
     DRAFT,

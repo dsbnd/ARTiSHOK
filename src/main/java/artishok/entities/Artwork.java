@@ -1,7 +1,7 @@
-package lab1.entities;
+package artishok.entities;
 
+import artishok.entities.enums.ArtworkStatus;
 import jakarta.persistence.*;
-import lab1.entities.enums.ArtworkStatus;
 
 @Entity
 @Table(name = "artworks")

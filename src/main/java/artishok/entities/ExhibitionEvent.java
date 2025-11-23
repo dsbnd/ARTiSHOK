@@ -1,13 +1,14 @@
-package lab1.entities;
+package artishok.entities;
 
 import jakarta.persistence.*;
-import lab1.entities.enums.ExhibitionStatus;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import artishok.entities.enums.ExhibitionStatus;
 
 @Entity
 @Table(name = "exhibition_event")

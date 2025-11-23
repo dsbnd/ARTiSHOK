@@ -1,4 +1,4 @@
-package lab1.entities;
+package artishok.entities;
 
 import jakarta.persistence.*;
 import lombok.Getter;

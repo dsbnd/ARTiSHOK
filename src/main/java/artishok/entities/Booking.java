@@ -1,9 +1,10 @@
-package lab1.entities;
+package artishok.entities;
 
 import jakarta.persistence.*;
-import lab1.entities.enums.BookingStatus;
 
 import java.time.LocalDateTime;
+
+import artishok.entities.enums.BookingStatus;
 
 @Entity
 @Table(name = "bookings")
