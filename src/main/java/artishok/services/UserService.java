@@ -11,17 +11,24 @@ import artishok.entities.enums.UserRole;
 import artishok.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class UserService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final EmailVerificationService emailVerificationService;
 
-	UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+	UserService(UserRepository userRepository, PasswordEncoder passwordEncoder,
+			EmailVerificationService emailVerificationService) {
 		this.passwordEncoder = passwordEncoder;
 		this.userRepository = userRepository;
+		this.emailVerificationService = emailVerificationService;
 	}
+
+	@Value("${app.email.verification.enabled:true}")
+	private boolean emailVerificationEnabled;
 
 	public List<User> getAllUsers() {
 		return userRepository.findAll();
@@ -41,11 +48,21 @@ public class UserService {
 			user.setRegistrationDate(LocalDateTime.now());
 		}
 
-		if (user.getIsActive() == null) {
-			user.setIsActive(true);
-		}
-
-		return userRepository.save(user);
+		// Если верификация email включена, аккаунт не активен до подтверждения
+        if (emailVerificationEnabled) {
+            user.setIsActive(false);
+        } else {
+            user.setIsActive(true);
+        }
+        
+        User savedUser = userRepository.save(user);
+        
+        // Отправляем email для верификации, если включено
+        if (emailVerificationEnabled) {
+            emailVerificationService.sendVerificationEmail(savedUser);
+        }
+        
+        return savedUser;
 	}
 
 	public Optional<User> getUserById(Long id) {
@@ -106,47 +123,44 @@ public class UserService {
 	public List<User> getUsersByRole(UserRole role) {
 		return userRepository.findByRole(role);
 	}
-	
+
 	// Получение активных пользователей
-    public List<User> getActiveUsers() {
-        return userRepository.findByIsActiveTrue();
-    }
-    
-    // Поиск пользователей по имени
-    public List<User> searchUsersByName(String name) {
-        return userRepository.findByFullNameContainingIgnoreCase(name);
-    }
-    
-    // Подсчет пользователей по роли
-    public long countUsersByRole(UserRole role) {
-        return userRepository.countByRole(role);
-    }
-    
-    // Получение последних зарегистрированных пользователей
-    public List<User> getRecentlyRegisteredUsers() {
-        return userRepository.findTop10ByOrderByRegistrationDateDesc();
-    }
-    
-    // Смена пароля
-    @Transactional
-    public void changePassword(Long userId, String newPassword) {
-        userRepository.findById(userId)
-                .ifPresent(user -> {
-                    user.setPasswordHash(passwordEncoder.encode(newPassword));
-                    userRepository.save(user);
-                });
-    }
-    
-    // Проверка существования пользователя
-    public boolean userExists(Long id) {
-        return userRepository.existsById(id);
-    }
-    
-    // Проверка существования email
-    public boolean emailExists(String email) {
-        return userRepository.existsByEmail(email);
-    }
-	
-	
+	public List<User> getActiveUsers() {
+		return userRepository.findByIsActiveTrue();
+	}
+
+	// Поиск пользователей по имени
+	public List<User> searchUsersByName(String name) {
+		return userRepository.findByFullNameContainingIgnoreCase(name);
+	}
+
+	// Подсчет пользователей по роли
+	public long countUsersByRole(UserRole role) {
+		return userRepository.countByRole(role);
+	}
+
+	// Получение последних зарегистрированных пользователей
+	public List<User> getRecentlyRegisteredUsers() {
+		return userRepository.findTop10ByOrderByRegistrationDateDesc();
+	}
+
+	// Смена пароля
+	@Transactional
+	public void changePassword(Long userId, String newPassword) {
+		userRepository.findById(userId).ifPresent(user -> {
+			user.setPasswordHash(passwordEncoder.encode(newPassword));
+			userRepository.save(user);
+		});
+	}
+
+	// Проверка существования пользователя
+	public boolean userExists(Long id) {
+		return userRepository.existsById(id);
+	}
+
+	// Проверка существования email
+	public boolean emailExists(String email) {
+		return userRepository.existsByEmail(email);
+	}
 
 }

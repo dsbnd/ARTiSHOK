@@ -47,8 +47,12 @@ public class UserController {
 			String password = (String) userData.get("password");
 
 			User createdUser = userService.createUser(user, password);
+
+			Map<String, Object> response = Map.of("user", createdUser, "message",
+					"Пользователь создан. Пожалуйста, проверьте вашу почту для подтверждения email.");
+
 			System.out.println("Пользователь успешно создан");
-			return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+			return ResponseEntity.status(HttpStatus.CREATED).body(response);
 		} catch (IllegalArgumentException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
 		} catch (Exception e) {
@@ -181,9 +185,7 @@ public class UserController {
 	@ApiResponse(responseCode = "204", description = "Пароль успешно изменен")
 	@ApiResponse(responseCode = "404", description = "Пользователь не найден")
 	@PostMapping("/{id}/change-password")
-	public ResponseEntity<?> changePassword(
-			@PathVariable ("id") Long id,
-			@RequestParam ("password")String newPassword) {
+	public ResponseEntity<?> changePassword(@PathVariable("id") Long id, @RequestParam("password") String newPassword) {
 
 		if (!userService.userExists(id)) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден"));
@@ -195,8 +197,7 @@ public class UserController {
 
 	@ApiResponse(responseCode = "200", description = "Результат проверки")
 	@GetMapping("/check-email")
-	public ResponseEntity<Map<String, Object>> checkEmailExists(
-			@RequestParam ("email") String email) {
+	public ResponseEntity<Map<String, Object>> checkEmailExists(@RequestParam("email") String email) {
 
 		boolean exists = userService.emailExists(email);
 		return ResponseEntity.ok(Map.of("email", email, "exists", exists));
@@ -208,4 +209,17 @@ public class UserController {
 		List<User> users = userService.getRecentlyRegisteredUsers();
 		return ResponseEntity.ok(users);
 	}
+
+	@ApiResponse(responseCode = "200", description = "Результат проверки")
+	@GetMapping("/check-activation")
+	public ResponseEntity<?> checkUserActivation(
+			@RequestParam("email") String email) {
+
+		return userService.getUserByEmail(email)
+				.map(user -> ResponseEntity.ok(Map.of("email", email, "isActive", user.getIsActive(), "message",
+						user.getIsActive() ? "Пользователь активирован"
+								: "Пользователь не активирован. Проверьте email для подтверждения.")))
+				.orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден")));
+	}
+
 }
