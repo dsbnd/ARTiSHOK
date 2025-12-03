@@ -119,7 +119,27 @@ public class EmailVerificationService {
         EmailVerificationToken tokenEntity = verificationToken.get();
         return !tokenEntity.isExpired() && !tokenEntity.getUsed();
     }
-    
+    @Transactional(readOnly = true)
+    public User getUserByVerificationToken(String token) {
+        Optional<EmailVerificationToken> verificationToken = tokenRepository.findByToken(token);
+
+        if (verificationToken.isEmpty()) {
+            throw new IllegalArgumentException("Неверный токен верификации");
+        }
+
+        EmailVerificationToken tokenEntity = verificationToken.get();
+
+        if (tokenEntity.isExpired()) {
+            throw new IllegalArgumentException("Токен верификации истек");
+        }
+
+        if (tokenEntity.getUsed()) {
+            throw new IllegalArgumentException("Токен уже использован");
+        }
+
+        return tokenEntity.getUser();
+    }
+
     @Transactional
     public void cleanExpiredTokens() {
         // Удаляем все использованные токены

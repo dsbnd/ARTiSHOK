@@ -27,7 +27,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
-	
+
 	runtimeOnly 'org.postgresql:postgresql'
 	implementation 'org.hibernate.validator:hibernate-validator'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'

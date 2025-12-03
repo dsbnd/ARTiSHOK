@@ -39,7 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Поиск по имени (частичное совпадение)
     List<User> findByFullNameContainingIgnoreCase(String name);
-    
+    boolean existsByPhoneNumber(String phoneNumber);
     
     // Проверка существования email
     boolean existsByEmail(String email);
@@ -49,4 +49,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Получение последних зарегистрированных пользователей
     List<User> findTop10ByOrderByRegistrationDateDesc();
+    @Query("SELECT u FROM User u WHERE (:role IS NULL OR u.role = :role) " +
+            "AND (:search IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    List<User> findUsersByFilters(@Param("role") UserRole role,
+                                  @Param("search") String search);
 }
