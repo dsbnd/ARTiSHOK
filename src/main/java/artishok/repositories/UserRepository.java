@@ -46,6 +46,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // Подсчет пользователей по роли
     long countByRole(UserRole role);
+    long countByIsActiveTrue();
     
     // Получение последних зарегистрированных пользователей
     List<User> findTop10ByOrderByRegistrationDateDesc();

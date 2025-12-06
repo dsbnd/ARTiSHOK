@@ -277,4 +277,83 @@ public class AuthController {
         @jakarta.validation.constraints.NotBlank(message = "Пароль обязателен")
         private String password;
     }
+    // ТЕСТРИРОВАНИЕ
+    @PostMapping("/activate-user")
+    @Operation(summary = "Активировать пользователя (для тестирования)")
+    public ResponseEntity<?> activateUserForTesting(
+            @RequestParam String email,
+            @RequestParam String password) {
+
+        try {
+            // Находим пользователя
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+            // Устанавливаем новый пароль
+            user.setPasswordHash(passwordEncoder.encode(password));
+
+            // Активируем аккаунт (без email подтверждения)
+            user.setIsActive(true);
+
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Пользователь активирован",
+                    "email", email,
+                    "password", password,
+                    "isActive", true
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    // ========== РЕГИСТРАЦИЯ БЕЗ EMAIL ВЕРИФИКАЦИИ  ==========
+    @Operation(summary = "Регистрация без email верификации (для тестирования)")
+    @PostMapping("/register-no-verify")
+    public ResponseEntity<?> registerNoVerify(@Valid @RequestBody RegisterRequest request) {
+        // Проверка существования email
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Email уже используется"));
+        }
+
+        // Проверка существования телефона
+        if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Номер телефона уже используется"));
+        }
+
+        // Создание пользователя (активного сразу)
+        User user = new User();
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(request.getFullName());
+        user.setRole(request.getRole());
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setBio(request.getBio());
+        user.setAvatarUrl(request.getAvatarUrl());
+        user.setRegistrationDate(LocalDateTime.now());
+        user.setIsActive(true); // Сразу активен
+
+        userRepository.save(user);
+
+        // Генерация токена для автоматического входа
+        String token = jwtTokenUtil.generateToken(user);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Регистрация успешна (без email верификации для тестирования)",
+                "token", token,
+                "user", Map.of(
+                "id", user.getId(),
+                "email", user.getEmail(),
+                "fullName", user.getFullName(),
+                "role", user.getRole(),
+                "avatarUrl", user.getAvatarUrl(),
+                "isActive", user.getIsActive()
+        )
+    ));
+    }
 }

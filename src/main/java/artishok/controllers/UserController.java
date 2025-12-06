@@ -4,8 +4,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import artishok.entities.User;
@@ -17,6 +22,9 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/users")
+@PreAuthorize("isAuthenticated()")
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "Пользователь", description = "Общие методы для всех аутентифицированных пользователей")
 public class UserController {
 	private final UserService userService;
 
@@ -25,6 +33,7 @@ public class UserController {
 	}
 
 	@PostMapping
+	@PreAuthorize("permitAll()") // Регистрация доступна всем
 	@ApiResponse(responseCode = "201", description = "Пользователь успешно создан")
 	@ApiResponse(responseCode = "400", description = "Неверные входные данные")
 	@ApiResponse(responseCode = "409", description = "Пользователь с таким email уже существует")
@@ -63,6 +72,7 @@ public class UserController {
 	@ApiResponse(responseCode = "200", description = "Пользователь найден")
 	@ApiResponse(responseCode = "404", description = "Пользователь не найден")
 	@GetMapping("/{id}")
+	@PreAuthorize("#id == authentication.principal.id or hasRole('ADMIN')")
 	public ResponseEntity<?> getUserById(
 			@Parameter(description = "ID пользователя", required = true) @PathVariable("id") Long id) {
 
@@ -220,6 +230,56 @@ public class UserController {
 						user.getIsActive() ? "Пользователь активирован"
 								: "Пользователь не активирован. Проверьте email для подтверждения.")))
 				.orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Пользователь не найден")));
+	}
+	@GetMapping("/profile")
+	@Operation(summary = "Получить профиль текущего пользователя")
+	@ApiResponse(responseCode = "200", description = "Профиль получен")
+	@ApiResponse(responseCode = "401", description = "Пользователь не авторизован")
+	public ResponseEntity<?> getCurrentUserProfile() {
+		try {
+			User currentUser = userService.getCurrentUser();
+			return ResponseEntity.ok(Map.of(
+					"success", true,
+					"user", currentUser
+			));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+					.body(Map.of("error", "Пользователь не авторизован"));
+		}
+	}
+	@PutMapping("/profile")
+	@Operation(summary = "Обновить профиль текущего пользователя")
+	@ApiResponse(responseCode = "200", description = "Профиль обновлен")
+	@ApiResponse(responseCode = "401", description = "Пользователь не авторизован")
+	public ResponseEntity<?> updateCurrentUserProfile(@RequestBody Map<String, Object> updates) {
+		try {
+			User currentUser = userService.getCurrentUser();
+
+			User userUpdates = new User();
+
+			if (updates.containsKey("fullName")) {
+				userUpdates.setFullName((String) updates.get("fullName"));
+			}
+			if (updates.containsKey("phoneNumber")) {
+				userUpdates.setPhoneNumber((String) updates.get("phoneNumber"));
+			}
+			if (updates.containsKey("bio")) {
+				userUpdates.setBio((String) updates.get("bio"));
+			}
+			if (updates.containsKey("avatarUrl")) {
+				userUpdates.setAvatarUrl((String) updates.get("avatarUrl"));
+			}
+
+			User updatedUser = userService.updateUser(currentUser.getId(), userUpdates);
+			return ResponseEntity.ok(Map.of(
+					"success", true,
+					"message", "Профиль обновлен",
+					"user", updatedUser
+			));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", e.getMessage()));
+		}
 	}
 
 }

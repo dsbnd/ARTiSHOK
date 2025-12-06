@@ -159,5 +159,25 @@ public class BookingService {
     public List<Booking> getBookingsBetweenDates(LocalDateTime startDate, LocalDateTime endDate) {
         return bookingRepository.findByBookingDateBetween(startDate, endDate);
     }
-    
+
+    public Booking saveBooking(Booking booking) {
+        // Валидация
+        if (booking.getExhibitionStand() == null) {
+            throw new IllegalArgumentException("Бронирование должно быть связано со стендом");
+        }
+
+        if (booking.getArtist() == null) {
+            throw new IllegalArgumentException("Бронирование должно быть связано с художником");
+        }
+
+        if (booking.getStatus() == null) {
+            booking.setStatus(BookingStatus.PENDING);
+        }
+
+        if (booking.getBookingDate() == null) {
+            booking.setBookingDate(LocalDateTime.now());
+        }
+
+        return bookingRepository.save(booking);
+    }
 }

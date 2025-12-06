@@ -16,12 +16,12 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
     
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-    
-    @Value("${app.email.verification.base-url:http://localhost:8080}")
-    private String baseUrl;
-    
+//    @Value("${spring.mail.username}")
+//    private String fromEmail;
+private String fromEmail = "noreply@artishok.com"; //заглушки, пока не работает
+//    @Value("${app.email.verification.base-url:http://localhost:8080}")
+//    private String baseUrl;
+private String baseUrl = "http://localhost:8080"; //заглушки, пока не работает
     public void sendVerificationEmail(String toEmail, String verificationToken, String userName) {
         String subject = "Подтверждение email для сервиса АРТиШОК";
         String verificationUrl = baseUrl + "/api/auth/verify-email?token=" + verificationToken;

@@ -178,5 +178,33 @@ public class ArtworkService {
 	public boolean artworkExists(Long id) {
 		return artworkRepository.existsById(id);
 	}
+	@Transactional
+	public Artwork saveArtwork(Artwork artwork) {
+		// Валидация
+		if (artwork.getBooking() == null) {
+			throw new IllegalArgumentException("Произведение должно быть связано с бронированием");
+		}
 
+		if (artwork.getTitle() == null || artwork.getTitle().trim().isEmpty()) {
+			throw new IllegalArgumentException("Название произведения обязательно");
+		}
+
+		if (artwork.getStatus() == null) {
+			artwork.setStatus(ArtworkStatus.DRAFT);
+		}
+
+		if (artwork.getCreationYear() != null && artwork.getCreationYear() > LocalDateTime.now().getYear()) {
+			throw new IllegalArgumentException("Год создания не может быть в будущем");
+		}
+
+		// Проверка уникальности названия для художника
+		if (artwork.getId() == null) { // только для новых записей
+			Long artistId = artwork.getBooking().getArtist().getId();
+			if (artworkRepository.existsByTitleAndArtistId(artwork.getTitle(), artistId)) {
+				throw new IllegalArgumentException("У вас уже есть произведение с таким названием");
+			}
+		}
+
+		return artworkRepository.save(artwork);
+	}
 }

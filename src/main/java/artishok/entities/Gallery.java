@@ -34,7 +34,17 @@ public class Gallery {
 
     @Column(name = "logo_url")
     private String logoUrl;
+	@Transient
+	private User owner;
+	@Transient
+	private java.time.LocalDateTime createdAt;
+	public java.time.LocalDateTime getCreatedAt() {
+		return createdAt;
+	}
 
+	public void setCreatedAt(java.time.LocalDateTime createdAt) {
+		this.createdAt = createdAt;
+	}
     public Long getId() {
 		return id;
 	}
