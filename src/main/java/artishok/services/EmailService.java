@@ -16,135 +16,167 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
     
-//    @Value("${spring.mail.username}")
-//    private String fromEmail;
-private String fromEmail = "noreply@artishok.com"; //заглушки, пока не работает
-//    @Value("${app.email.verification.base-url:http://localhost:8080}")
-//    private String baseUrl;
-private String baseUrl = "http://localhost:8080"; //заглушки, пока не работает
+    @Value("${spring.mail.from:dashainastya@artishok.com}")
+    private String fromEmail;
+    
+    @Value("${app.email.verification.base-url:http://localhost:8080}")
+    private String baseUrl;
+    
     public void sendVerificationEmail(String toEmail, String verificationToken, String userName) {
         String subject = "Подтверждение email для сервиса АРТиШОК";
         String verificationUrl = baseUrl + "/api/auth/verify-email?token=" + verificationToken;
         
-        String htmlContent = """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background-color: #4a4a9c; color: white; padding: 20px; text-align: center; }
-                    .content { padding: 30px; background-color: #f9f9f9; }
-                    .button { display: inline-block; padding: 12px 24px; background-color: #4a4a9c; 
-                             color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-                    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; 
-                             color: #777; font-size: 12px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>АРТиШОК</h1>
-                        <p>Сервис организации художественных галерей</p>
-                    </div>
-                    <div class="content">
-                        <h2>Здравствуйте, %s!</h2>
-                        <p>Благодарим вас за регистрацию в сервисе АРТиШОК.</p>
-                        <p>Для завершения регистрации и активации вашего аккаунта, пожалуйста, подтвердите ваш email:</p>
-                        <p style="text-align: center;">
-                            <a href="%s" class="button">Подтвердить Email</a>
-                        </p>
-                        <p>Или скопируйте и вставьте следующую ссылку в браузер:</p>
-                        <p style="word-break: break-all; background-color: #eee; padding: 10px; border-radius: 4px;">
-                            %s
-                        </p>
-                        <p>Ссылка действительна в течение 24 часов.</p>
-                        <p>Если вы не регистрировались в нашем сервисе, пожалуйста, проигнорируйте это письмо.</p>
-                    </div>
-                    <div class="footer">
-                        <p>© 2024 АРТиШОК. Все права защищены.</p>
-                        <p>Это письмо было отправлено автоматически, пожалуйста, не отвечайте на него.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(userName, verificationUrl, verificationUrl);
+        String htmlContent = createVerificationEmailHtml(userName, verificationUrl);
         
-        sendHtmlEmail(toEmail, subject, htmlContent);
+        try {
+            sendHtmlEmail(toEmail, subject, htmlContent);
+        } catch (Exception e) {
+            // В режиме разработки просто пропускаем ошибку
+            System.out.println("Внимание: письмо не отправлено (режим разработки)");
+        }
     }
     
     public void sendWelcomeEmail(String toEmail, String userName) {
         String subject = "Добро пожаловать в АРТиШОК!";
+        String htmlContent = createWelcomeEmailHtml(userName, baseUrl);
         
-        String htmlContent = """
+        try {
+            sendHtmlEmail(toEmail, subject, htmlContent);
+        } catch (Exception e) {
+            System.out.println("Внимание: приветственное письмо не отправлено");
+        }
+    }
+    
+    private void sendHtmlEmail(String to, String subject, String htmlContent) throws MessagingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        
+        helper.setFrom(fromEmail);
+        helper.setTo(to);
+        helper.setSubject(subject);
+        helper.setText(htmlContent, true);
+        
+        mailSender.send(message);
+    }
+    
+    public void sendSimpleEmail(String to, String subject, String text) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(text);
+            
+            mailSender.send(message);
+            System.out.println("Тестовое письмо отправлено в MailHog");
+        } catch (Exception e) {
+            System.out.println("Ошибка отправки письма: " + e.getMessage());
+            throw e;
+        }
+    }
+    
+    public void testMailHogConnection() {
+        try {
+            sendSimpleEmail("test@artishok.com", "MailHog Test", 
+                "Тестовое письмо из АРТиШОК. Проверьте MailHog UI: http://localhost:8025");
+            System.out.println("Соединение с MailHog работает");
+        } catch (Exception e) {
+            System.out.println("Ошибка соединения с MailHog: " + e.getMessage());
+        }
+    }
+    
+    private String createVerificationEmailHtml(String userName, String verificationUrl) {
+        return String.format("""
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background-color: #4a4a9c; color: white; padding: 20px; text-align: center; }
-                    .content { padding: 30px; background-color: #f9f9f9; }
-                    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; 
-                             color: #777; font-size: 12px; }
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+                    .header { background-color: #4a4a9c; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 40px; }
+                    .button { display: inline-block; padding: 15px 30px; background-color: #4a4a9c; 
+                             color: white; text-decoration: none; border-radius: 5px; font-size: 16px; 
+                             font-weight: bold; margin: 20px 0; }
+                    .footer { background-color: #f5f5f5; padding: 20px; text-align: center; 
+                             color: #777; font-size: 12px; margin-top: 30px; }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>АРТиШОК</h1>
-                        <p>Сервис организации художественных галерей</p>
+                        <h1>🎨 АРТиШОК</h1>
+                        <p>Платформа для удобного планирования выставок</p>
                     </div>
                     <div class="content">
-                        <h2>Добро пожаловать, %s!</h2>
-                        <p>Ваш аккаунт в сервисе АРТиШОК успешно подтвержден и активирован.</p>
-                        <p>Теперь вы можете:</p>
-                        <ul>
-                            <li>Просматривать текущие и будущие выставки</li>
-                            <li>Бронировать места для ваших произведений искусства</li>
-                            <li>Добавлять информацию о ваших работах</li>
-                            <li>Взаимодействовать с галереями</li>
-                        </ul>
-                        <p>Для начала работы перейдите в <a href="%s">личный кабинет</a>.</p>
-                        <p>Если у вас возникнут вопросы, наша служба поддержки всегда готова помочь.</p>
+                        <h2>Здравствуйте, %s!</h2>
+                        <p>Спасибо за регистрацию в АРТиШОК!</p>
+                        <p>Для завершения регистрации, пожалуйста, подтвердите ваш email:</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="%s" class="button">Подтвердить Email</a>
+                        </div>
+                        
+                        <p>Или скопируйте ссылку в браузер:</p>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; word-break: break-all;">
+                            %s
+                        </div>
+                        
+                        <p><strong>Ссылка действительна 24 часа.</strong></p>
                     </div>
                     <div class="footer">
-                        <p>© 2024 АРТиШОК. Все права защищены.</p>
-                        <p>Это письмо было отправлено автоматически, пожалуйста, не отвечайте на него.</p>
+                        <p>© 2025 АРТиШОК. Все права защищены.</p>
+                        <p>Это письмо отправлено автоматически.</p>
                     </div>
                 </div>
             </body>
             </html>
-            """.formatted(userName, baseUrl);
-        
-        sendHtmlEmail(toEmail, subject, htmlContent);
+            """, userName, verificationUrl, verificationUrl);
     }
     
-    private void sendHtmlEmail(String to, String subject, String htmlContent) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true);
-            
-            mailSender.send(message);
-        } catch (MessagingException e) {
-            throw new RuntimeException("Ошибка при отправке email", e);
-        }
-    }
-    
-    public void sendSimpleEmail(String to, String subject, String text) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(text);
-        
-        mailSender.send(message);
+    private String createWelcomeEmailHtml(String userName, String baseUrl) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+                    .header { background-color: #27ae60; color: white; padding: 30px; text-align: center; }
+                    .content { padding: 40px; }
+                    .feature { background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 5px; 
+                              border-left: 4px solid #4a4a9c; }
+                    .footer { background-color: #f5f5f5; padding: 20px; text-align: center; 
+                             color: #777; font-size: 12px; margin-top: 30px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Добро пожаловать в АРТиШОК!</h1>
+                        <p>Ваш аккаунт успешно активирован</p>
+                    </div>
+                    <div class="content">
+                        <h2>Приветствуем, %s!</h2>
+                        <p>Рады видеть вас в нашем сообществе художников и галерей!</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="%s" style="display: inline-block; padding: 15px 30px; 
+                               background-color: #4a4a9c; color: white; text-decoration: none; 
+                               border-radius: 5px; font-weight: bold;">
+                                Начать работу →
+                            </a>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <p>© 2024 АРТиШОК. Платформа для арт-сообщества</p>
+                        <p>Это письмо отправлено автоматически.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """, userName, baseUrl);
     }
 }

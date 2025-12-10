@@ -7,7 +7,10 @@ import artishok.entities.enums.GalleryStatus;
 import artishok.entities.enums.UserRole;
 import artishok.repositories.GalleryOwnershipRepository;
 import artishok.repositories.GalleryRepository;
+import artishok.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,12 @@ public class GalleryService {
     private final GalleryRepository galleryRepository;
     private final GalleryOwnershipRepository galleryOwnershipRepository;
     private final UserService userService;
+    GalleryService(UserService userService, GalleryRepository galleryRepository,
+    		GalleryOwnershipRepository galleryOwnershipRepository) {
+		this.galleryRepository = galleryRepository;
+		this.userService = userService;
+		this.galleryOwnershipRepository = galleryOwnershipRepository;
+	}
 
     // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
 

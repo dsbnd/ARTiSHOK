@@ -30,7 +30,7 @@ public class EmailVerificationService {
     
     @Transactional
     public String createVerificationToken(User user) {
-        // Удаляем старые токены для этого пользователя
+        // Удаляем старые токены
         tokenRepository.deleteByUser(user);
         
         // Создаем новый токен
@@ -45,8 +45,17 @@ public class EmailVerificationService {
     
     @Transactional
     public void sendVerificationEmail(User user) {
-        String token = createVerificationToken(user);
-        emailService.sendVerificationEmail(user.getEmail(), token, user.getFullName());
+        try {
+            String token = createVerificationToken(user);
+            emailService.sendVerificationEmail(user.getEmail(), token, user.getFullName());
+        } catch (Exception e) {
+            // В режиме разработки: автоматически активируем пользователя
+            if (!user.getIsActive()) {
+                user.setIsActive(true);
+                userRepository.save(user);
+                System.out.println("Пользователь " + user.getEmail() + " автоматически активирован (режим разработки)");
+            }
+        }
     }
     
     @Transactional
@@ -59,13 +68,13 @@ public class EmailVerificationService {
         
         EmailVerificationToken tokenEntity = verificationToken.get();
         
-        // Проверяем, не истек ли токен
+        // Проверяем срок действия
         if (tokenEntity.isExpired()) {
             tokenRepository.delete(tokenEntity);
             return false;
         }
         
-        // Проверяем, не использован ли токен
+        // Проверяем, использован ли токен
         if (tokenEntity.getUsed()) {
             return false;
         }
@@ -80,25 +89,17 @@ public class EmailVerificationService {
         tokenRepository.save(tokenEntity);
         
         // Отправляем приветственное письмо
-        emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
+        try {
+            emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
+        } catch (Exception e) {
+            // Игнорируем ошибки при отправке приветственного письма
+        }
         
         return true;
     }
     
     @Transactional
-    public void resendVerificationEmail(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
-        
-        if (user.getIsActive()) {
-            throw new IllegalArgumentException("Аккаунт уже активирован");
-        }
-        
-        sendVerificationEmail(user);
-    }
-    
-    @Transactional
-    public void resendVerificationEmailByEmail(String email) {
+    public void resendVerificationEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
         
@@ -119,6 +120,7 @@ public class EmailVerificationService {
         EmailVerificationToken tokenEntity = verificationToken.get();
         return !tokenEntity.isExpired() && !tokenEntity.getUsed();
     }
+    
     @Transactional(readOnly = true)
     public User getUserByVerificationToken(String token) {
         Optional<EmailVerificationToken> verificationToken = tokenRepository.findByToken(token);
@@ -139,13 +141,35 @@ public class EmailVerificationService {
 
         return tokenEntity.getUser();
     }
-
+    
     @Transactional
-    public void cleanExpiredTokens() {
-        // Удаляем все использованные токены
-        tokenRepository.deleteByUsed(true);
-        
-        // Можно также удалить просроченные токены
-        // Для этого нужно добавить метод в репозиторий
+    public void resendVerificationEmailByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        if (user.getIsActive()) {
+            throw new IllegalArgumentException("Аккаунт уже активирован");
+        }
+
+        sendVerificationEmail(user);
+        System.out.println("Письмо верификации повторно отправлено на: " + email);
+    }
+    
+    @Transactional(readOnly = true)
+    public User getUserByTokenAfterVerification(String token) {
+        Optional<EmailVerificationToken> verificationToken = tokenRepository.findByToken(token);
+
+        if (verificationToken.isEmpty()) {
+            throw new IllegalArgumentException("Неверный токен верификации");
+        }
+
+        EmailVerificationToken tokenEntity = verificationToken.get();
+
+        if (tokenEntity.isExpired()) {
+            throw new IllegalArgumentException("Токен верификации истек");
+        }
+
+        // Не проверяем used флаг, так как метод вызывается после верификации
+        return tokenEntity.getUser();
     }
 }

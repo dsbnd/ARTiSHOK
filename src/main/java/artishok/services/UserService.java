@@ -29,7 +29,7 @@ public class UserService {
 		this.passwordEncoder = passwordEncoder;
 		this.userRepository = userRepository;
 		this.emailVerificationService = emailVerificationService;
-		this.userActivityLogService = userActivityLogService; // Добавлено
+		this.userActivityLogService = userActivityLogService; 
 	}
 
 	@Value("${app.email.verification.enabled:true}")
