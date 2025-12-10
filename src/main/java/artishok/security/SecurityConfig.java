@@ -56,7 +56,14 @@ public class SecurityConfig {
 						.requestMatchers("/exhibition-events/**", "/galleries/**", "/api/health", "/api/test",
 								"/api/debug/**")
 						.permitAll()
+						// Администратор (только ADMIN)
+						.requestMatchers("/admin/**").hasRole("ADMIN")
 
+						// Владельцы галерей (GALLERY_OWNER и ADMIN)
+						.requestMatchers("/gallery-owner/**").hasAnyRole("GALLERY_OWNER", "ADMIN")
+
+						// Художники (ARTIST и ADMIN)
+						.requestMatchers("/artist/**").hasAnyRole("ARTIST", "ADMIN")
 						// Администратор (только ADMIN)
 						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 

@@ -28,12 +28,12 @@ public class GalleryService {
     private final GalleryRepository galleryRepository;
     private final GalleryOwnershipRepository galleryOwnershipRepository;
     private final UserService userService;
-    GalleryService(UserService userService, GalleryRepository galleryRepository,
-    		GalleryOwnershipRepository galleryOwnershipRepository) {
-		this.galleryRepository = galleryRepository;
-		this.userService = userService;
-		this.galleryOwnershipRepository = galleryOwnershipRepository;
-	}
+//    GalleryService(UserService userService, GalleryRepository galleryRepository,
+//    		GalleryOwnershipRepository galleryOwnershipRepository) {
+//		this.galleryRepository = galleryRepository;
+//		this.userService = userService;
+//		this.galleryOwnershipRepository = galleryOwnershipRepository;
+//	}
 
     // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
 
@@ -96,7 +96,7 @@ public class GalleryService {
                 galleryData.get("contactEmail").toString() : owner.getEmail());
         gallery.setLogoUrl(galleryData.containsKey("logoUrl") ?
                 galleryData.get("logoUrl").toString() : null);
-        gallery.setStatus(GalleryStatus.PENDING);
+//        gallery.setStatus(GalleryStatus.PENDING);
         gallery.setAdminComment(null);
 
         // Сохраняем галерею
@@ -116,7 +116,9 @@ public class GalleryService {
 
         return convertToDTO(savedGallery);
     }
-
+    public Optional<User> getGalleryOwner(Long galleryId) {
+        return galleryRepository.findPrimaryOwnerByGalleryId(galleryId);
+    }
     /**
      * Получить галереи владельца
      */

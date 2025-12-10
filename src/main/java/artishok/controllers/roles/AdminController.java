@@ -1,7 +1,10 @@
 package artishok.controllers.roles;
 
+import artishok.entities.Gallery;
 import artishok.entities.User;
+import artishok.entities.enums.GalleryStatus;
 import artishok.entities.enums.UserRole;
+import artishok.services.GalleryService;
 import artishok.services.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,7 +29,8 @@ import java.util.Map;
 @Tag(name = "Администратор", description = "API для администраторов системы")
 public class AdminController {
 
-	private UserService userService;
+	private final UserService userService;
+	private final GalleryService galleryService;
 
 	@GetMapping("/users")
 	@Operation(summary = "Получить всех пользователей")
@@ -138,5 +143,94 @@ public class AdminController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Ошибка удаления пользователя"));
 		}
+	}
+	@GetMapping("/galleries/pending")
+	@Operation(summary = "Получить галереи ожидающие модерации")
+	public ResponseEntity<?> getPendingGalleries() {
+		try {
+			List<Gallery> galleries = galleryService.getPendingGalleries();
+			return ResponseEntity.ok(Map.of("success", true, "galleries", galleries, "total", galleries.size()));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(Map.of("error", "Ошибка получения галерей на модерации"));
+		}
+	}
+	@PutMapping("/galleries/{id}/approve")
+	@Operation(summary = "Одобрить галерею")
+	public ResponseEntity<?> approveGallery(@PathVariable Long id,
+											@RequestBody(required = false) Map<String, String> request) {
+		try {
+			String comment = request != null ? request.get("comment") : "Одобрено администратором";
+			Gallery gallery = galleryService.changeGalleryStatus(id, GalleryStatus.APPROVED, comment);
+			return ResponseEntity.ok(Map.of("success", true, "message", "Галерея одобрена", "gallery",
+					convertGalleryToDTO(gallery)));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+		}
+	}
+	@PutMapping("/galleries/{id}/reject")
+	@Operation(summary = "Отклонить галерею")
+	public ResponseEntity<?> rejectGallery(@PathVariable Long id, @RequestBody Map<String, String> request) {
+		try {
+			String comment = request.get("comment");
+			if (comment == null || comment.trim().isEmpty()) {
+				return ResponseEntity.badRequest().body(Map.of("error", "Комментарий обязателен при отклонении"));
+			}
+
+			Gallery gallery = galleryService.changeGalleryStatus(id, GalleryStatus.REJECTED, comment);
+			return ResponseEntity.ok(Map.of("success", true, "message", "Галерея отклонена", "gallery",
+					convertGalleryToDTO(gallery)));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+		}
+	}
+	@PutMapping("/galleries/{id}/status")
+	@Operation(summary = "Изменить статус галереи")
+	public ResponseEntity<?> changeGalleryStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
+		try {
+			String statusStr = request.get("status");
+			String comment = request.get("comment");
+
+			if (statusStr == null) {
+				return ResponseEntity.badRequest().body(Map.of("error", "Параметр status обязателен"));
+			}
+
+			GalleryStatus status;
+			try {
+				status = GalleryStatus.valueOf(statusStr.toUpperCase());
+			} catch (IllegalArgumentException e) {
+				return ResponseEntity.badRequest().body(Map.of("error", "Некорректный статус галереи"));
+			}
+
+			Gallery gallery = galleryService.changeGalleryStatus(id, status, comment);
+			return ResponseEntity.ok(Map.of("success", true, "message", "Статус галереи изменен", "gallery",
+					convertGalleryToDTO(gallery)));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+		}
+	}
+	private Map<String, Object> convertGalleryToDTO(Gallery gallery) {
+		Map<String, Object> dto = new HashMap<>();
+		dto.put("id", gallery.getId());
+		dto.put("name", gallery.getName());
+		dto.put("description", gallery.getDescription());
+		dto.put("address", gallery.getAddress());
+		dto.put("contactPhone", gallery.getContactPhone());
+		dto.put("contactEmail", gallery.getContactEmail());
+		dto.put("logoUrl", gallery.getLogoUrl());
+		dto.put("status", gallery.getStatus().toString());
+		dto.put("adminComment", gallery.getAdminComment());
+
+		if (gallery.getOwner() != null) {
+			dto.put("ownerId", gallery.getOwner().getId());
+			dto.put("ownerName", gallery.getOwner().getFullName());
+			dto.put("ownerEmail", gallery.getOwner().getEmail());
+		}
+
+		if (gallery.getCreatedAt() != null) {
+			dto.put("createdAt", gallery.getCreatedAt());
+		}
+
+		return dto;
 	}
 }

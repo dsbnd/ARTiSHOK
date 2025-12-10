@@ -377,9 +377,7 @@ public class ArtistController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка уже завершена"));
 			}
 
-			if (exhibition.getStartDate().isAfter(LocalDateTime.now())) {
-				return ResponseEntity.badRequest().body(Map.of("error", "Выставка еще не началась"));
-			}
+
 
 			// Проверяем, не занят ли уже стенд
 			List<Booking> standBookings = bookingService.getAllBookings().stream()
