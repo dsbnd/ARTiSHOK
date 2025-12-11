@@ -33,7 +33,7 @@ public class UserController {
 	}
 
 	@PostMapping
-	@PreAuthorize("permitAll()") // Регистрация доступна всем
+	@PreAuthorize("permitAll()")
 	@ApiResponse(responseCode = "201", description = "Пользователь успешно создан")
 	@ApiResponse(responseCode = "400", description = "Неверные входные данные")
 	@ApiResponse(responseCode = "409", description = "Пользователь с таким email уже существует")

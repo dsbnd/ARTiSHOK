@@ -180,7 +180,7 @@ public class ArtworkService {
 	}
 	@Transactional
 	public Artwork saveArtwork(Artwork artwork) {
-		// Валидация
+		
 		if (artwork.getBooking() == null) {
 			throw new IllegalArgumentException("Произведение должно быть связано с бронированием");
 		}
@@ -197,8 +197,8 @@ public class ArtworkService {
 			throw new IllegalArgumentException("Год создания не может быть в будущем");
 		}
 
-		// Проверка уникальности названия для художника
-		if (artwork.getId() == null) { // только для новых записей
+		
+		if (artwork.getId() == null) { 
 			Long artistId = artwork.getBooking().getArtist().getId();
 			if (artworkRepository.existsByTitleAndArtistId(artwork.getTitle(), artistId)) {
 				throw new IllegalArgumentException("У вас уже есть произведение с таким названием");

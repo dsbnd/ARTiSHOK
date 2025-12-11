@@ -21,7 +21,7 @@ public class JwtTokenUtil {
     @Value("${jwt.secret:artishok-secret-key-for-jwt-token-generation-2024}")
     private String secret;
 
-    @Value("${jwt.expiration:86400000}") // 24 часа в миллисекундах
+    @Value("${jwt.expiration:86400000}")
     private Long expiration;
 
     private SecretKey getSigningKey() {

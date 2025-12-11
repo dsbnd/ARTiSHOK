@@ -44,7 +44,6 @@ public class ArtistController {
 	@Autowired
 	private ExhibitionHallMapService exhibitionHallMapService;
 
-	// ==================== ПРОИЗВЕДЕНИЯ ИСКУССТВА ====================
 
 	@GetMapping("/artworks")
 	@Operation(summary = "Получить мои произведения")
@@ -54,19 +53,19 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем все бронирования художника
+
 			List<Booking> artistBookings = bookingService.getAllBookings().stream()
 					.filter(booking -> booking.getArtist().getId().equals(currentUser.getId()))
 					.collect(Collectors.toList());
 
-			// Получаем ID бронирований
+
 			List<Long> bookingIds = artistBookings.stream().map(Booking::getId).collect(Collectors.toList());
 
-			// Получаем все произведения по бронированиям
+
 			List<Artwork> allArtworks = artworkService.getAllArtworks().stream()
 					.filter(artwork -> bookingIds.contains(artwork.getBooking().getId())).collect(Collectors.toList());
 
-			// Фильтрация по статусу, если указан
+
 			if (status != null && !status.isEmpty()) {
 				try {
 					ArtworkStatus artworkStatus = ArtworkStatus.valueOf(status.toUpperCase());
@@ -77,12 +76,12 @@ public class ArtistController {
 				}
 			}
 
-			// Применяем пагинацию
+
 			int start = Math.min(page * size, allArtworks.size());
 			int end = Math.min(start + size, allArtworks.size());
 			List<Artwork> paginatedArtworks = allArtworks.subList(start, end);
 
-			// Преобразование в DTO
+
 			List<Map<String, Object>> artworkDTOs = paginatedArtworks.stream().map(this::convertArtworkToDTO)
 					.collect(Collectors.toList());
 
@@ -100,7 +99,7 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверка обязательных полей
+
 			if (!artworkData.containsKey("title") || !artworkData.containsKey("bookingId")) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Поля title и bookingId обязательны"));
 			}
@@ -112,7 +111,7 @@ public class ArtistController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат bookingId"));
 			}
 
-			// Проверяем бронирование
+
 			Optional<Booking> bookingOpt = bookingService.getBookingById(bookingId);
 			if (!bookingOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Бронирование не найдено"));
@@ -120,19 +119,19 @@ public class ArtistController {
 
 			Booking booking = bookingOpt.get();
 
-			// Проверяем, что бронирование принадлежит художнику
+
 			if (!booking.getArtist().getId().equals(currentUser.getId())) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Бронирование не принадлежит вам"));
 			}
 
-			// Проверяем, что бронирование подтверждено
+
 			if (booking.getStatus() != BookingStatus.CONFIRMED) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Можно добавить произведение только к подтвержденному бронированию"));
 			}
 
-			// Создаем произведение
+
 			Artwork artwork = new Artwork();
 			artwork.setBooking(booking);
 			artwork.setTitle(artworkData.get("title").toString());
@@ -140,7 +139,7 @@ public class ArtistController {
 					artworkData.containsKey("description") ? artworkData.get("description").toString() : "");
 			artwork.setStatus(ArtworkStatus.DRAFT);
 
-			// Дополнительные поля
+
 			if (artworkData.containsKey("creationYear")) {
 				try {
 					artwork.setCreationYear(Integer.parseInt(artworkData.get("creationYear").toString()));
@@ -174,7 +173,7 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем произведение
+
 			Optional<Artwork> artworkOpt = artworkService.getArtworkById(id);
 			if (!artworkOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Произведение не найдено"));
@@ -182,13 +181,13 @@ public class ArtistController {
 
 			Artwork artwork = artworkOpt.get();
 
-			// Проверяем, что произведение принадлежит художнику
+
 			if (!artwork.getBooking().getArtist().getId().equals(currentUser.getId())) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на обновление этого произведения"));
 			}
 
-			// Обновляем поля
+
 			if (updates.containsKey("title")) {
 				artwork.setTitle(updates.get("title").toString());
 			}
@@ -233,7 +232,7 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем произведение
+
 			Optional<Artwork> artworkOpt = artworkService.getArtworkById(id);
 			if (!artworkOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Произведение не найдено"));
@@ -241,13 +240,13 @@ public class ArtistController {
 
 			Artwork artwork = artworkOpt.get();
 
-			// Проверяем, что произведение принадлежит художнику
+
 			if (!artwork.getBooking().getArtist().getId().equals(currentUser.getId())) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на удаление этого произведения"));
 			}
 
-			// Проверяем статус произведения
+
 			if (artwork.getStatus() == ArtworkStatus.PUBLISHED) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Нельзя удалить опубликованное произведение"));
 			}
@@ -261,7 +260,7 @@ public class ArtistController {
 		}
 	}
 
-	// ==================== БРОНИРОВАНИЯ ====================
+
 
 	@GetMapping("/bookings")
 	@Operation(summary = "Получить мои бронирования")
@@ -271,15 +270,15 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем все бронирования
+
 			List<Booking> allBookings = bookingService.getAllBookings();
 
-			// Фильтруем по художнику
+
 			List<Booking> artistBookings = allBookings.stream()
 					.filter(booking -> booking.getArtist().getId().equals(currentUser.getId()))
 					.collect(Collectors.toList());
 
-			// Фильтрация по статусу, если указан
+
 			if (status != null && !status.isEmpty()) {
 				try {
 					BookingStatus bookingStatus = BookingStatus.valueOf(status.toUpperCase());
@@ -290,12 +289,12 @@ public class ArtistController {
 				}
 			}
 
-			// Применяем пагинацию
+		
 			int start = Math.min(page * size, artistBookings.size());
 			int end = Math.min(start + size, artistBookings.size());
 			List<Booking> paginatedBookings = artistBookings.subList(start, end);
 
-			// Преобразование в DTO
+			
 			List<Map<String, Object>> bookingDTOs = paginatedBookings.stream().map(this::convertBookingToDTO)
 					.collect(Collectors.toList());
 
@@ -313,11 +312,11 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем подтвержденные бронирования художника
+			
 			List<Booking> allBookings = bookingService.getAllBookings();
 
-			// Фильтруем: художник + статус CONFIRMED + выставка ACTIVE + дата окончания в
-			// будущем
+			
+			
 			List<Booking> activeBookings = allBookings.stream()
 					.filter(booking -> booking.getArtist().getId().equals(currentUser.getId()))
 					.filter(booking -> booking.getStatus() == BookingStatus.CONFIRMED).filter(booking -> {
@@ -327,7 +326,7 @@ public class ArtistController {
 								&& exhibition.getEndDate().isAfter(LocalDateTime.now());
 					}).collect(Collectors.toList());
 
-			// Преобразование в DTO
+			
 			List<Map<String, Object>> bookingDTOs = activeBookings.stream().map(this::convertBookingToDTO)
 					.collect(Collectors.toList());
 
@@ -344,7 +343,7 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверка обязательных полей
+			
 			if (!bookingData.containsKey("exhibitionStandId")) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Поле exhibitionStandId обязательно"));
 			}
@@ -356,7 +355,7 @@ public class ArtistController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат exhibitionStandId"));
 			}
 
-			// Проверяем стенд
+			
 			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(exhibitionStandId);
 			if (!standOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Стенд не найден"));
@@ -364,22 +363,22 @@ public class ArtistController {
 
 			ExhibitionStand stand = standOpt.get();
 
-			// Проверяем выставку
+			
 			ExhibitionEvent exhibition = stand.getExhibitionHallMap().getExhibitionEvent();
 
-			// Проверяем, что выставка активна
+			
 			if (exhibition.getStatus() != ExhibitionStatus.ACTIVE) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка не активна для бронирования"));
 			}
 
-			// Проверяем даты выставки
+			
 			if (exhibition.getEndDate().isBefore(LocalDateTime.now())) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка уже завершена"));
 			}
 
 
 
-			// Проверяем, не занят ли уже стенд
+			
 			List<Booking> standBookings = bookingService.getAllBookings().stream()
 					.filter(b -> b.getExhibitionStand().getId().equals(exhibitionStandId))
 					.filter(b -> b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.PENDING)
@@ -389,7 +388,7 @@ public class ArtistController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Стенд уже забронирован"));
 			}
 
-			// Создаем бронирование
+			
 			Booking booking = new Booking();
 			booking.setExhibitionStand(stand);
 			booking.setArtist(currentUser);
@@ -413,7 +412,7 @@ public class ArtistController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем бронирование
+			
 			Optional<Booking> bookingOpt = bookingService.getBookingById(id);
 			if (!bookingOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Бронирование не найдено"));
@@ -421,19 +420,19 @@ public class ArtistController {
 
 			Booking booking = bookingOpt.get();
 
-			// Проверяем, что бронирование принадлежит художнику
+			
 			if (!booking.getArtist().getId().equals(currentUser.getId())) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на отмену этого бронирования"));
 			}
 
-			// Проверяем статус бронирования
+			
 			if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Нельзя отменить бронирование в текущем статусе"));
 			}
 
-			// Проверяем даты выставки
+			
 			ExhibitionEvent exhibition = booking.getExhibitionStand().getExhibitionHallMap().getExhibitionEvent();
 
 			if (exhibition.getStartDate().isBefore(LocalDateTime.now())) {
@@ -441,10 +440,10 @@ public class ArtistController {
 						.body(Map.of("error", "Нельзя отменить бронирование после начала выставки"));
 			}
 
-			// Отменяем бронирование
+			
 			booking.setStatus(BookingStatus.CANCELLED);
 			String reason = request != null ? request.get("reason") : "Отменено художником";
-			// TODO: добавить поле reason в сущность Booking
+			
 
 			Booking savedBooking = bookingService.saveBooking(booking);
 
@@ -456,22 +455,22 @@ public class ArtistController {
 		}
 	}
 
-	// ==================== ДОСТУПНЫЕ ВЫСТАВКИ И СТЕНДЫ ====================
+	
 
 	@GetMapping("/available-exhibitions")
 	@Operation(summary = "Получить доступные выставки")
 	public ResponseEntity<?> getAvailableExhibitions() {
 		try {
-			// Получаем все активные выставки
+			
 			List<ExhibitionEvent> allExhibitions = exhibitionEventService.getAllExhibitionEvents();
 
-			// Фильтруем активные выставки
+			
 			List<ExhibitionEvent> activeExhibitions = allExhibitions.stream()
 					.filter(exhibition -> exhibition.getStatus() == ExhibitionStatus.ACTIVE)
 					.filter(exhibition -> exhibition.getEndDate().isAfter(LocalDateTime.now()))
 					.collect(Collectors.toList());
 
-			// Преобразование в DTO
+			
 			List<Map<String, Object>> exhibitionDTOs = activeExhibitions.stream().map(this::convertExhibitionToDTO)
 					.collect(Collectors.toList());
 
@@ -487,7 +486,7 @@ public class ArtistController {
 	@Operation(summary = "Получить доступные стенды для выставки")
 	public ResponseEntity<?> getAvailableStands(@PathVariable Long id) {
 		try {
-			// Получаем выставку
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -495,23 +494,23 @@ public class ArtistController {
 
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 
-			// Проверяем, что выставка активна
+			
 			if (exhibition.getStatus() != ExhibitionStatus.ACTIVE) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка не активна"));
 			}
 
-			// Получаем все карты залов для выставки
+			
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 
-			// Получаем все стенды для этих карт
+			
 			List<ExhibitionStand> allStands = hallMaps.stream()
 					.flatMap(hallMap -> exhibitionStandService.getExhibitionStandsByHallMapId(hallMap.getId()).stream())
 					.collect(Collectors.toList());
 
-			// Получаем все бронирования для этих стендов
+			
 			List<Booking> allBookings = bookingService.getAllBookings();
 
-			// Фильтруем доступные стенды (не забронированные)
+			
 			List<ExhibitionStand> availableStands = allStands.stream().filter(stand -> {
 				boolean isBooked = allBookings.stream()
 						.anyMatch(booking -> booking.getExhibitionStand().getId().equals(stand.getId())
@@ -520,7 +519,7 @@ public class ArtistController {
 				return !isBooked;
 			}).collect(Collectors.toList());
 
-			// Преобразование в DTO
+			
 			List<Map<String, Object>> standDTOs = availableStands.stream().map(this::convertStandToDTO)
 					.collect(Collectors.toList());
 
@@ -532,7 +531,7 @@ public class ArtistController {
 		}
 	}
 
-	// ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+	
 
 	private Map<String, Object> convertArtworkToDTO(Artwork artwork) {
 		Map<String, Object> dto = new HashMap<>();

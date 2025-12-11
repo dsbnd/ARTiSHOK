@@ -10,6 +10,7 @@ import artishok.repositories.GalleryRepository;
 import artishok.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,21 +26,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class GalleryService {
-    private final GalleryRepository galleryRepository;
-    private final GalleryOwnershipRepository galleryOwnershipRepository;
-    private final UserService userService;
-//    GalleryService(UserService userService, GalleryRepository galleryRepository,
-//    		GalleryOwnershipRepository galleryOwnershipRepository) {
-//		this.galleryRepository = galleryRepository;
-//		this.userService = userService;
-//		this.galleryOwnershipRepository = galleryOwnershipRepository;
-//	}
+    @Autowired
+    private  GalleryRepository galleryRepository;
 
-    // ==================== ОСНОВНЫЕ МЕТОДЫ ====================
+    @Autowired
+    private  GalleryOwnershipRepository galleryOwnershipRepository;
+    @Autowired
+    private  UserService userService;
+
+
+    
 
     public List<Gallery> getAllGalleries() {
         List<Gallery> galleries = galleryRepository.findAll();
-        // Заполняем поле owner и дату создания для каждой галереи
+        
         galleries.forEach(this::loadOwnerAndDateForGallery);
         return galleries;
     }
@@ -57,34 +57,34 @@ public class GalleryService {
     }
 
     public void deleteGallery(Long id) {
-        // Сначала удаляем связи владения
+        
         galleryOwnershipRepository.findByGalleryId(id)
                 .forEach(galleryOwnershipRepository::delete);
-        // Затем удаляем галерею
+        
         galleryRepository.deleteById(id);
     }
 
-    // ==================== МЕТОДЫ ДЛЯ ВЛАДЕНИЯ ====================
+    
 
     /**
      * Создать галерею и назначить владельца
      */
     public Map<String, Object> createGalleryWithOwner(Long ownerId, Map<String, Object> galleryData) {
-        // Получаем владельца
+        
         User owner = userService.getUserById(ownerId)
                 .orElseThrow(() -> new RuntimeException("Владелец не найден"));
 
-        // Проверяем роль владельца
+        
         if (owner.getRole() != UserRole.GALLERY_OWNER && owner.getRole() != UserRole.ADMIN) {
             throw new RuntimeException("Только владельцы галерей и администраторы могут создавать галереи");
         }
 
-        // Валидация обязательных полей
+        
         if (!galleryData.containsKey("name") || !galleryData.containsKey("address")) {
             throw new RuntimeException("Поля name и address обязательны");
         }
 
-        // Создаем галерею
+        
         Gallery gallery = new Gallery();
         gallery.setName(galleryData.get("name").toString());
         gallery.setAddress(galleryData.get("address").toString());
@@ -96,13 +96,13 @@ public class GalleryService {
                 galleryData.get("contactEmail").toString() : owner.getEmail());
         gallery.setLogoUrl(galleryData.containsKey("logoUrl") ?
                 galleryData.get("logoUrl").toString() : null);
-//        gallery.setStatus(GalleryStatus.PENDING);
+
         gallery.setAdminComment(null);
 
-        // Сохраняем галерею
+        
         Gallery savedGallery = galleryRepository.save(gallery);
 
-        // Создаем связь владения
+        
         GalleryOwnership ownership = new GalleryOwnership();
         ownership.setGallery(savedGallery);
         ownership.setOwner(owner);
@@ -111,7 +111,7 @@ public class GalleryService {
 
         galleryOwnershipRepository.save(ownership);
 
-        // Загружаем владельца и дату создания для галереи
+        
         loadOwnerAndDateForGallery(savedGallery);
 
         return convertToDTO(savedGallery);
@@ -136,10 +136,10 @@ public class GalleryService {
             galleries = galleryRepository.findByOwnerId(ownerId);
         }
 
-        // Загружаем владельцев и даты создания для каждой галереи
+        
         galleries.forEach(this::loadOwnerAndDateForGallery);
 
-        // Применяем пагинацию
+        
         int start = Math.min(page * size, galleries.size());
         int end = Math.min(start + size, galleries.size());
         List<Gallery> paginatedGalleries = galleries.subList(start, end);
@@ -163,7 +163,7 @@ public class GalleryService {
         Gallery gallery = galleryRepository.findById(galleryId)
                 .orElseThrow(() -> new RuntimeException("Галерея не найдена"));
 
-        // Обновляем поля
+        
         if (updates.containsKey("name")) {
             gallery.setName(updates.get("name").toString());
         }
@@ -183,7 +183,7 @@ public class GalleryService {
             gallery.setLogoUrl(updates.get("logoUrl").toString());
         }
 
-        // Если галерея была APPROVED, возвращаем на модерацию после изменений
+        
         if (gallery.getStatus() == GalleryStatus.APPROVED) {
             gallery.setStatus(GalleryStatus.PENDING);
             gallery.setAdminComment(null);
@@ -201,7 +201,7 @@ public class GalleryService {
     public Map<String, Object> getGalleryStatistics(Long ownerId, Long galleryId) {
         Map<String, Object> stats = new HashMap<>();
 
-        // Получаем галереи владельца
+        
         List<Gallery> ownerGalleries;
         if (galleryId != null) {
             ownerGalleries = galleryRepository.findByOwnerId(ownerId).stream()
@@ -211,16 +211,16 @@ public class GalleryService {
             ownerGalleries = galleryRepository.findByOwnerId(ownerId);
         }
 
-        // Загружаем владельцев и даты
+        
         ownerGalleries.forEach(this::loadOwnerAndDateForGallery);
 
-        // Основная статистика
+        
         stats.put("totalGalleries", ownerGalleries.size());
         stats.put("pendingGalleries", countByStatus(ownerGalleries, GalleryStatus.PENDING));
         stats.put("approvedGalleries", countByStatus(ownerGalleries, GalleryStatus.APPROVED));
         stats.put("rejectedGalleries", countByStatus(ownerGalleries, GalleryStatus.REJECTED));
 
-        // Если нужна статистика по конкретной галерее
+        
         if (galleryId != null && !ownerGalleries.isEmpty()) {
             Gallery gallery = ownerGalleries.get(0);
             Map<String, Object> galleryDetails = convertToDTO(gallery);
@@ -230,19 +230,19 @@ public class GalleryService {
         return stats;
     }
 
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+    
 
     /**
      * Загрузить владельца и дату создания для галереи
      */
     private void loadOwnerAndDateForGallery(Gallery gallery) {
-        // Загружаем основного владельца
+        
         Optional<User> primaryOwnerOpt = galleryRepository.findPrimaryOwnerByGalleryId(gallery.getId());
         if (primaryOwnerOpt.isPresent()) {
             gallery.setOwner(primaryOwnerOpt.get());
         }
 
-        // Загружаем дату создания из gallery_ownership
+        
         Optional<GalleryOwnership> ownershipOpt = galleryOwnershipRepository.findPrimaryOwner(gallery.getId());
         if (ownershipOpt.isPresent()) {
             gallery.setCreatedAt(ownershipOpt.get().getCreatedAt());
@@ -261,12 +261,12 @@ public class GalleryService {
         dto.put("status", gallery.getStatus().toString());
         dto.put("adminComment", gallery.getAdminComment());
 
-        // Добавляем дату создания, если есть
+        
         if (gallery.getCreatedAt() != null) {
             dto.put("createdAt", gallery.getCreatedAt());
         }
 
-        // Добавляем информацию о владельце, если она есть
+        
         if (gallery.getOwner() != null) {
             Map<String, Object> ownerInfo = new HashMap<>();
             ownerInfo.put("id", gallery.getOwner().getId());
@@ -285,7 +285,7 @@ public class GalleryService {
                 .count();
     }
 
-    // ==================== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ====================
+    
 
     /**
      * Получить галереи по статусу

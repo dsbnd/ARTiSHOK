@@ -45,15 +45,15 @@ public class UserService {
 			throw new IllegalArgumentException("Пользователь с таким email уже существует");
 		}
 
-		// Хеширование пароля
+		
 		user.setPasswordHash(passwordEncoder.encode(plainPassword));
 
-		// Установка даты регистрации, если не установлена
+		
 		if (user.getRegistrationDate() == null) {
 			user.setRegistrationDate(LocalDateTime.now());
 		}
 
-		// Если верификация email включена, аккаунт не активен до подтверждения
+		
         if (emailVerificationEnabled) {
             user.setIsActive(false);
         } else {
@@ -62,7 +62,7 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Отправляем email для верификации, если включено
+        
         if (emailVerificationEnabled) {
             emailVerificationService.sendVerificationEmail(savedUser);
         }
@@ -78,11 +78,11 @@ public class UserService {
 		return userRepository.findByEmail(email);
 	}
 
-	// Обновление пользователя
+	
 	@Transactional
 	public User updateUser(Long id, User updatedUser) {
 		return userRepository.findById(id).map(existingUser -> {
-			// Обновляем только разрешенные поля
+			
 			if (updatedUser.getFullName() != null) {
 				existingUser.setFullName(updatedUser.getFullName());
 			}
@@ -99,14 +99,14 @@ public class UserService {
 				existingUser.setIsActive(updatedUser.getIsActive());
 			}
 
-			// Роль и email обычно не изменяются через этот метод
-			// Для их изменения нужны отдельные методы с проверкой прав
+			
+			
 
 			return userRepository.save(existingUser);
 		}).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 	}
 
-	// Удаление пользователя (мягкое удаление - деактивация)
+	
 	@Transactional
 	public void deactivateUser(Long id) {
 		userRepository.findById(id).ifPresent(user -> {
@@ -115,7 +115,7 @@ public class UserService {
 		});
 	}
 
-	// Активация пользователя
+	
 	@Transactional
 	public void activateUser(Long id) {
 		userRepository.findById(id).ifPresent(user -> {
@@ -124,32 +124,32 @@ public class UserService {
 		});
 	}
 
-	// Получение пользователей по роли
+	
 	public List<User> getUsersByRole(UserRole role) {
 		return userRepository.findByRole(role);
 	}
 
-	// Получение активных пользователей
+	
 	public List<User> getActiveUsers() {
 		return userRepository.findByIsActiveTrue();
 	}
 
-	// Поиск пользователей по имени
+	
 	public List<User> searchUsersByName(String name) {
 		return userRepository.findByFullNameContainingIgnoreCase(name);
 	}
 
-	// Подсчет пользователей по роли
+	
 	public long countUsersByRole(UserRole role) {
 		return userRepository.countByRole(role);
 	}
 
-	// Получение последних зарегистрированных пользователей
+	
 	public List<User> getRecentlyRegisteredUsers() {
 		return userRepository.findTop10ByOrderByRegistrationDateDesc();
 	}
 
-	// Смена пароля
+	
 	@Transactional
 	public void changePassword(Long userId, String newPassword) {
 		userRepository.findById(userId).ifPresent(user -> {
@@ -157,41 +157,38 @@ public class UserService {
 			userRepository.save(user);
 		});
 	}
-	/**
-	 * Сбросить пароль пользователя (администратор сбрасывает пароль другому пользователю)
-	 * Генерирует временный пароль и возвращает его для отображения администратору
-	 */
+
 	@Transactional
 	public String resetUserPassword(Long userId) {
-		// Проверяем, что администратор существует и аутентифицирован
+		
 		User currentAdmin = getCurrentUser();
 		if (currentAdmin.getRole() != UserRole.ADMIN) {
 			throw new RuntimeException("Только администраторы могут сбрасывать пароли");
 		}
 
-		// Находим пользователя, которому сбрасываем пароль
+		
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-		// Проверяем, что администратор не сбрасывает пароль самому себе
+		
 		if (user.getId().equals(currentAdmin.getId())) {
 			throw new RuntimeException("Администратор не может сбросить свой собственный пароль");
 		}
 
-		// Генерируем временный пароль (8 символов: буквы и цифры)
+		
 		String tempPassword = generateTemporaryPassword();
 
-		// Устанавливаем новый пароль
+		
 		user.setPasswordHash(passwordEncoder.encode(tempPassword));
 		userRepository.save(user);
 
-		// Логируем действие
+		
 		if (userActivityLogService != null) {
 			try {
 				userActivityLogService.createLog(currentAdmin.getId(),
 						String.format("RESET_PASSWORD_FOR_USER_%d", userId));
 			} catch (Exception e) {
-				// Игнорируем ошибки логирования, чтобы не нарушить основной функционал
+				
 				System.err.println("Ошибка логирования сброса пароля: " + e.getMessage());
 			}
 		}
@@ -199,10 +196,7 @@ public class UserService {
 		return tempPassword;
 	}
 
-	/**
-	 * Генерация временного пароля
-	 * Формат: 8 символов (буквы и цифры)
-	 */
+
 	private String generateTemporaryPassword() {
 		String upperCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		String lowerCaseLetters = "abcdefghijklmnopqrstuvwxyz";
@@ -212,17 +206,17 @@ public class UserService {
 		StringBuilder password = new StringBuilder();
 		java.util.Random random = new java.util.Random();
 
-		// Гарантируем, что пароль содержит хотя бы одну букву и одну цифру
+		
 		password.append(upperCaseLetters.charAt(random.nextInt(upperCaseLetters.length())));
 		password.append(lowerCaseLetters.charAt(random.nextInt(lowerCaseLetters.length())));
 		password.append(numbers.charAt(random.nextInt(numbers.length())));
 
-		// Добавляем оставшиеся 5 символов случайным образом
+		
 		for (int i = 0; i < 5; i++) {
 			password.append(allChars.charAt(random.nextInt(allChars.length())));
 		}
 
-		// Перемешиваем символы для безопасности
+		
 		char[] passwordArray = password.toString().toCharArray();
 		for (int i = passwordArray.length - 1; i > 0; i--) {
 			int index = random.nextInt(i + 1);
@@ -234,12 +228,12 @@ public class UserService {
 		return new String(passwordArray);
 	}
 
-	// Проверка существования пользователя
+	
 	public boolean userExists(Long id) {
 		return userRepository.existsById(id);
 	}
 
-	// Проверка существования email
+	
 	public boolean emailExists(String email) {
 		return userRepository.existsByEmail(email);
 	}
@@ -251,31 +245,28 @@ public class UserService {
 			throw new RuntimeException("Пользователь не аутентифицирован");
 		}
 
-		// Получаем Principal (обычно это username/email)
+		
 		Object principal = authentication.getPrincipal();
 
 		if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
-			// Если используется CustomUserDetailsService
+			
 			String email = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
 			return userRepository.findByEmail(email)
 					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 		} else if (principal instanceof String) {
-			// Если Principal хранится как строка (email)
+			
 			String email = (String) principal;
 			return userRepository.findByEmail(email)
 					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 		} else if (principal instanceof User) {
-			// Если ваша сущность User реализует UserDetails и сохраняется в контексте
+			
 			return (User) principal;
 		} else {
 			throw new RuntimeException("Неизвестный тип пользователя в SecurityContext");
 		}
 	}
 
-	/**
-	 * Безопасное получение текущего пользователя (без исключения)
-	 * @return Optional с текущим пользователем или пустой Optional если не аутентифицирован
-	 */
+
 	@Transactional
 	public Optional<User> getCurrentUserOptional() {
 		try {
@@ -287,7 +278,7 @@ public class UserService {
 
 
 
-//Проверка, является ли текущий пользователь администратором
+
 	public boolean isCurrentUserAdmin() {
 		try {
 			User user = getCurrentUser();
@@ -296,7 +287,7 @@ public class UserService {
 			return false;
 		}
 	}
-// Проверка, является ли текущий пользователь владельцем профиля
+
 	public boolean isCurrentUserOwner(Long userId) {
 		try {
 			User user = getCurrentUser();
@@ -312,13 +303,11 @@ public class UserService {
 			userRepository.save(user);
 		});
 	}
-	/**
-	 * Изменить роль пользователя
-	 */
+
 	@Transactional
 	public void changeUserRole(Long userId, UserRole newRole) {
 		userRepository.findById(userId).ifPresent(user -> {
-			// Нельзя изменить роль самому себе
+			
 			User currentUser = getCurrentUser();
 			if (currentUser.getId().equals(userId)) {
 				throw new RuntimeException("Нельзя изменить свою собственную роль");

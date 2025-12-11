@@ -41,24 +41,24 @@ public class AuthController {
 	@Autowired
 	private JwtTokenUtil jwtTokenUtil;
 
-	// ========== РЕГИСТРАЦИЯ ==========
+	
 	@Operation(summary = "Регистрация нового пользователя")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Пользователь зарегистрирован"),
 			@ApiResponse(responseCode = "400", description = "Ошибка валидации или email уже используется") })
 	@PostMapping("/register")
 	public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
 		
-		// Проверка существования email
+		
 		if (userRepository.existsByEmail(request.getEmail())) {
 			return ResponseEntity.badRequest().body(Map.of("error", "Email уже используется"));
 		}
 
-		// Проверка существования телефона
+		
 		if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
 			return ResponseEntity.badRequest().body(Map.of("error", "Номер телефона уже используется"));
 		}
 
-		// Создание пользователя (неактивного до подтверждения email)
+		
 		User user = new User();
 		user.setEmail(request.getEmail());
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -68,11 +68,11 @@ public class AuthController {
 		user.setBio(request.getBio());
 		user.setAvatarUrl(request.getAvatarUrl());
 		user.setRegistrationDate(LocalDateTime.now());
-		user.setIsActive(false); // Неактивен до подтверждения email
+		user.setIsActive(false); 
 
 		userRepository.save(user);
 
-		// Отправка письма для подтверждения email
+		
 		emailVerificationService.sendVerificationEmail(user);
 
 		return ResponseEntity
@@ -80,29 +80,29 @@ public class AuthController {
 						"userId", user.getId(), "email", user.getEmail()));
 	}
 
-	// ========== ВХОД В СИСТЕМУ ==========
+	
 	@Operation(summary = "Вход в систему")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Вход успешен"),
 			@ApiResponse(responseCode = "400", description = "Неверные учетные данные") })
 	@PostMapping("/login")
 	public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
 		try {
-			// Аутентификация
+			
 			authenticationManager
 					.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
 
-			// Получение пользователя
+			
 			User user = userRepository.findByEmail(request.getEmail())
 					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-			// Проверка активации аккаунта
+			
 			if (!Boolean.TRUE.equals(user.getIsActive())) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Аккаунт не активирован. Подтвердите email.", "resendUrl",
 								"/api/auth/resend-verification?email=" + user.getEmail()));
 			}
 
-			// Генерация JWT токена
+			
 			String token = jwtTokenUtil.generateToken(user);
 
 			return ResponseEntity.ok(Map.of("token", token, "user",
@@ -113,7 +113,7 @@ public class AuthController {
 		}
 	}
 
-	// ========== ПОДТВЕРЖДЕНИЕ EMAIL ==========
+	
 	@GetMapping("/verify-email")
 	@Operation(summary = "Подтверждение email", description = "Подтверждение email по токену")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Email успешно подтвержден"),
@@ -125,8 +125,8 @@ public class AuthController {
 
 		if (verified) {
 			try {
-				// После верификации токен помечен как использованный, 
-				// поэтому нужно получить пользователя другим способом
+				
+				
 				User user = emailVerificationService.getUserByTokenAfterVerification(token);
 				String authToken = jwtTokenUtil.generateToken(user);
 
@@ -135,7 +135,7 @@ public class AuthController {
 								"token", authToken, "user", Map.of("id", user.getId(), "email", user.getEmail(), "fullName",
 										user.getFullName(), "role", user.getRole())));
 			} catch (Exception e) {
-				// Если не удалось получить пользователя по токену, ищем активного пользователя
+				
 				return ResponseEntity.ok(
 						Map.of("success", true, "message", "Email успешно подтвержден. Пожалуйста, войдите в систему."));
 			}
@@ -145,7 +145,7 @@ public class AuthController {
 		}
 	}
 
-	// ========== ПОВТОРНАЯ ОТПРАВКА ПИСЬМА ==========
+	
 	@Operation(summary = "Повторная отправка письма верификации", description = "Отправка нового письма для подтверждения email")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Письмо отправлено"),
 			@ApiResponse(responseCode = "400", description = "Пользователь не найден или уже активирован") })
@@ -163,7 +163,7 @@ public class AuthController {
 		}
 	}
 
-	// ========== ПРОВЕРКА ТОКЕНА ==========
+	
 	@Operation(summary = "Проверка токена верификации", description = "Проверка валидности токена верификации")
 	@ApiResponse(responseCode = "200", description = "Результат проверки")
 	@GetMapping("/check-token")
@@ -175,7 +175,7 @@ public class AuthController {
 		return ResponseEntity.ok(Map.of("valid", isValid, "token", token));
 	}
 
-	// ========== ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ ==========
+	
 	@Operation(summary = "Получить информацию о текущем пользователе")
 	@ApiResponse(responseCode = "200", description = "Информация о пользователе")
 	@GetMapping("/me")
@@ -194,7 +194,7 @@ public class AuthController {
 				user.getBio(), "registrationDate", user.getRegistrationDate(), "isActive", user.getIsActive()));
 	}
 
-	// ========== DTO КЛАССЫ ==========
+	
 	@Data
 	public static class RegisterRequest {
 		@jakarta.validation.constraints.Email(message = "Некорректный email")
@@ -286,20 +286,20 @@ public class AuthController {
 		private String password;
 	}
 
-	// ТЕСТРИРОВАНИЕ
+	
 	@PostMapping("/activate-user")
 	@Operation(summary = "Активировать пользователя (для тестирования)")
 	public ResponseEntity<?> activateUserForTesting(@RequestParam("email") String email, @RequestParam("password") String password) {
 
 		try {
-			// Находим пользователя
+			
 			User user = userRepository.findByEmail(email)
 					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-			// Устанавливаем новый пароль
+			
 			user.setPasswordHash(passwordEncoder.encode(password));
 
-			// Активируем аккаунт (без email подтверждения)
+			
 			user.setIsActive(true);
 
 			userRepository.save(user);
@@ -311,21 +311,21 @@ public class AuthController {
 		}
 	}
 
-	// ========== РЕГИСТРАЦИЯ БЕЗ EMAIL ВЕРИФИКАЦИИ ==========
+	
 	@Operation(summary = "Регистрация без email верификации (для тестирования)")
 	@PostMapping("/register-no-verify")
 	public ResponseEntity<?> registerNoVerify(@Valid @RequestBody RegisterRequest request) {
-		// Проверка существования email
+		
 		if (userRepository.existsByEmail(request.getEmail())) {
 			return ResponseEntity.badRequest().body(Map.of("error", "Email уже используется"));
 		}
 
-		// Проверка существования телефона
+		
 		if (request.getPhoneNumber() != null && userRepository.existsByPhoneNumber(request.getPhoneNumber())) {
 			return ResponseEntity.badRequest().body(Map.of("error", "Номер телефона уже используется"));
 		}
 
-		// Создание пользователя (активного сразу)
+		
 		User user = new User();
 		user.setEmail(request.getEmail());
 		user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -335,11 +335,11 @@ public class AuthController {
 		user.setBio(request.getBio());
 		user.setAvatarUrl(request.getAvatarUrl());
 		user.setRegistrationDate(LocalDateTime.now());
-		user.setIsActive(true); // Сразу активен
+		user.setIsActive(true); 
 
 		userRepository.save(user);
 
-		// Генерация токена для автоматического входа
+		
 		String token = jwtTokenUtil.generateToken(user);
 
 		return ResponseEntity.ok(Map.of("success", true, "message",

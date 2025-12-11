@@ -30,10 +30,10 @@ public class EmailVerificationService {
     
     @Transactional
     public String createVerificationToken(User user) {
-        // Удаляем старые токены
+        
         tokenRepository.deleteByUser(user);
         
-        // Создаем новый токен
+        
         String token = UUID.randomUUID().toString();
         LocalDateTime expiryDate = LocalDateTime.now().plusHours(expirationHours);
         
@@ -49,7 +49,7 @@ public class EmailVerificationService {
             String token = createVerificationToken(user);
             emailService.sendVerificationEmail(user.getEmail(), token, user.getFullName());
         } catch (Exception e) {
-            // В режиме разработки: автоматически активируем пользователя
+            
             if (!user.getIsActive()) {
                 user.setIsActive(true);
                 userRepository.save(user);
@@ -68,31 +68,31 @@ public class EmailVerificationService {
         
         EmailVerificationToken tokenEntity = verificationToken.get();
         
-        // Проверяем срок действия
+        
         if (tokenEntity.isExpired()) {
             tokenRepository.delete(tokenEntity);
             return false;
         }
         
-        // Проверяем, использован ли токен
+        
         if (tokenEntity.getUsed()) {
             return false;
         }
         
-        // Активируем пользователя
+        
         User user = tokenEntity.getUser();
         user.setIsActive(true);
         userRepository.save(user);
         
-        // Помечаем токен как использованный
+        
         tokenEntity.setUsed(true);
         tokenRepository.save(tokenEntity);
         
-        // Отправляем приветственное письмо
+        
         try {
             emailService.sendWelcomeEmail(user.getEmail(), user.getFullName());
         } catch (Exception e) {
-            // Игнорируем ошибки при отправке приветственного письма
+            
         }
         
         return true;
@@ -169,7 +169,7 @@ public class EmailVerificationService {
             throw new IllegalArgumentException("Токен верификации истек");
         }
 
-        // Не проверяем used флаг, так как метод вызывается после верификации
+        
         return tokenEntity.getUser();
     }
 }

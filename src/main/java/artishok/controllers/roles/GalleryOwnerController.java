@@ -39,7 +39,7 @@ public class GalleryOwnerController {
 	@Autowired
 	private ExhibitionStandService exhibitionStandService;
 
-	// ==================== ГАЛЕРЕИ ====================
+	
 
 	@GetMapping("/galleries")
 	@Operation(summary = "Получить мои галереи")
@@ -49,21 +49,21 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Используем метод сервиса для получения галерей владельца
+			
 			List<Map<String, Object>> galleryDTOs = galleryService.getOwnerGalleries(currentUser.getId(), status, page,
 					size);
 
-			// Получаем общее количество для пагинации
+			
 			List<Gallery> allOwnerGalleries = galleryService.getGalleriesByOwnerId(currentUser.getId());
 
-			// Фильтрация по статусу, если указан
+			
 			if (status != null && !status.isEmpty()) {
 				try {
 					GalleryStatus galleryStatus = GalleryStatus.valueOf(status.toUpperCase());
 					allOwnerGalleries = allOwnerGalleries.stream()
 							.filter(gallery -> gallery.getStatus() == galleryStatus).collect(Collectors.toList());
 				} catch (IllegalArgumentException e) {
-					// Игнорируем некорректный статус, используем все галереи
+					
 				}
 			}
 
@@ -81,12 +81,12 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверка обязательных полей
+			
 			if (!galleryData.containsKey("name") || !galleryData.containsKey("address")) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Поля name и address обязательны"));
 			}
 
-			// Проверка email
+			
 			if (!galleryData.containsKey("contactEmail")) {
 				galleryData.put("contactEmail", currentUser.getEmail());
 			}
@@ -109,7 +109,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверяем права на обновление галереи
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), id)) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на обновление этой галереи"));
@@ -125,7 +125,7 @@ public class GalleryOwnerController {
 		}
 	}
 
-	// ==================== ВЫСТАВКИ (ExhibitionEvent) ====================
+	
 
 	@GetMapping("/exhibitions")
 	@Operation(summary = "Получить мои выставки")
@@ -136,10 +136,10 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем все галереи владельца
+			
 			List<Gallery> ownerGalleries = galleryService.getGalleriesByOwnerId(currentUser.getId());
 
-			// Если указана конкретная галерея, фильтруем
+			
 			if (galleryId != null) {
 				Optional<Gallery> specificGallery = ownerGalleries.stream().filter(g -> g.getId().equals(galleryId))
 						.findFirst();
@@ -151,18 +151,18 @@ public class GalleryOwnerController {
 				}
 			}
 
-			// Получаем ID галерей владельца
+			
 			List<Long> ownerGalleryIds = ownerGalleries.stream().map(Gallery::getId).collect(Collectors.toList());
 
-			// Получаем все выставки
+			
 			List<ExhibitionEvent> allExhibitions = exhibitionEventService.getAllExhibitionEvents();
 
-			// Фильтруем по галереям владельца
+			
 			List<ExhibitionEvent> ownerExhibitions = allExhibitions.stream()
 					.filter(exhibition -> ownerGalleryIds.contains(exhibition.getGallery().getId()))
 					.collect(Collectors.toList());
 
-			// Фильтрация по статусу, если указан
+			
 			if (status != null && !status.isEmpty()) {
 				try {
 					ExhibitionStatus exhibitionStatus = ExhibitionStatus.valueOf(status.toUpperCase());
@@ -174,12 +174,12 @@ public class GalleryOwnerController {
 				}
 			}
 
-			// Пагинация
+			
 			int start = Math.min(page * size, ownerExhibitions.size());
 			int end = Math.min(start + size, ownerExhibitions.size());
 			List<ExhibitionEvent> paginatedExhibitions = ownerExhibitions.subList(start, end);
 
-			// Преобразование в DTO
+			
 			List<Map<String, Object>> exhibitionDTOs = paginatedExhibitions.stream().map(this::convertExhibitionToDTO)
 					.collect(Collectors.toList());
 
@@ -197,7 +197,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверка обязательных полей
+			
 			if (!exhibitionData.containsKey("title") || !exhibitionData.containsKey("galleryId")
 					|| !exhibitionData.containsKey("startDate") || !exhibitionData.containsKey("endDate")) {
 
@@ -212,13 +212,13 @@ public class GalleryOwnerController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат galleryId"));
 			}
 
-			// Проверяем права на галерею
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на создание выставки в этой галерее"));
 			}
 
-			// Получаем галерею
+			
 			Optional<Gallery> galleryOpt = galleryService.getGalleryById(galleryId);
 			if (!galleryOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Галерея не найдена"));
@@ -226,13 +226,13 @@ public class GalleryOwnerController {
 
 			Gallery gallery = galleryOpt.get();
 
-			// Проверяем, что галерея одобрена (APPROVED)
+			
 			if (gallery.getStatus() != GalleryStatus.APPROVED) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Галерея должна быть одобрена (APPROVED) для создания выставки"));
 			}
 
-			// Парсим даты
+			
 			LocalDateTime startDate, endDate;
 			try {
 				startDate = LocalDateTime.parse(exhibitionData.get("startDate").toString());
@@ -242,18 +242,18 @@ public class GalleryOwnerController {
 						Map.of("error", "Некорректный формат даты. Используйте формат ISO (yyyy-MM-dd'T'HH:mm:ss)"));
 			}
 
-			// Проверяем, что endDate после startDate
+			
 			if (endDate.isBefore(startDate) || endDate.isEqual(startDate)) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Дата окончания должна быть позже даты начала"));
 			}
 
-			// Проверяем, что дата начала в будущем
+			
 			if (startDate.isBefore(LocalDateTime.now())) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Дата начала должна быть в будущем"));
 			}
 
-			// Создаем выставку
+			
 			ExhibitionEvent exhibition = new ExhibitionEvent();
 			exhibition.setTitle(exhibitionData.get("title").toString());
 			exhibition.setDescription(
@@ -261,7 +261,7 @@ public class GalleryOwnerController {
 			exhibition.setGallery(gallery);
 			exhibition.setStartDate(startDate);
 			exhibition.setEndDate(endDate);
-			exhibition.setStatus(ExhibitionStatus.DRAFT); // По умолчанию DRAFT
+			exhibition.setStatus(ExhibitionStatus.DRAFT); 
 
 			ExhibitionEvent savedExhibition = exhibitionEventService.saveExhibitionEvent(exhibition);
 
@@ -279,7 +279,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем выставку
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -287,7 +287,7 @@ public class GalleryOwnerController {
 
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 
-			// Проверяем, что у выставки есть галерея
+			
 			if (exhibition.getGallery() == null) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка не привязана к галерее"));
 			}
@@ -299,7 +299,7 @@ public class GalleryOwnerController {
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)
 					&& !userService.isCurrentUserAdmin()) {
 
-				// Получаем информацию о владельце для сообщения об ошибке
+				
 				Optional<User> galleryOwnerOpt = galleryService.getGalleryOwner(galleryId);
 				String errorMessage = "Нет прав на изменение этой выставки.";
 
@@ -315,7 +315,7 @@ public class GalleryOwnerController {
 						.body(Map.of("error", errorMessage));
 			}
 
-			// Меняем статус на ACTIVE
+			
 			exhibition.setStatus(ExhibitionStatus.ACTIVE);
 			ExhibitionEvent updatedExhibition = exhibitionEventService.saveExhibitionEvent(exhibition);
 
@@ -339,7 +339,7 @@ public class GalleryOwnerController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Параметр mapImageUrl обязателен"));
 			}
 
-			// Получаем выставку
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -355,7 +355,7 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Нет прав на добавление карты зала к этой выставке"));
 			}
 
-			// Создаем карту зала
+			
 			ExhibitionHallMap hallMap = new ExhibitionHallMap();
 			hallMap.setExhibitionEvent(exhibition);
 			hallMap.setMapImageUrl(mapImageUrl);
@@ -377,7 +377,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем выставку
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -393,15 +393,15 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Нет прав на просмотр стендов этой выставки"));
 			}
 
-			// Получаем карты залов для этой выставки
+			
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 
-			// Получаем стенды для всех карт залов
+			
 			List<ExhibitionStand> stands = hallMaps.stream()
 					.flatMap(hallMap -> exhibitionStandService.getExhibitionStandsByHallMapId(hallMap.getId()).stream())
 					.collect(Collectors.toList());
 
-			// Преобразуем в DTO
+			
 			List<Map<String, Object>> standDTOs = stands.stream().map(this::convertStandToDTO)
 					.collect(Collectors.toList());
 
@@ -412,7 +412,7 @@ public class GalleryOwnerController {
 					.body(Map.of("error", "Ошибка получения стендов: " + e.getMessage()));
 		}
 	}
-// ==================== УПРАВЛЕНИЕ СТЕНДАМИ ВЫСТАВОК ====================
+
 
 	@PostMapping("/exhibitions/{id}/stands")
 	@Operation(summary = "Добавить новый стенд на выставку")
@@ -420,7 +420,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверяем, что выставка существует
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -429,41 +429,41 @@ public class GalleryOwnerController {
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 			Long galleryId = exhibition.getGallery().getId();
 
-			// Проверяем права владельца галереи
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)
 					&& !userService.isCurrentUserAdmin()) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на добавление стендов к этой выставке"));
 			}
 
-			// Валидация обязательных полей (ДОБАВЛЕНО type)
+			
 			if (!standData.containsKey("standNumber") || !standData.containsKey("width") ||
 					!standData.containsKey("height") || !standData.containsKey("type")) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Поля standNumber, width, height и type обязательны"));
 			}
 
-			// Получаем или создаем карту зала по умолчанию
+			
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 			ExhibitionHallMap hallMap;
 
 			if (hallMaps.isEmpty()) {
-				// Создаем карту зала по умолчанию, если её нет
+				
 				hallMap = new ExhibitionHallMap();
 				hallMap.setExhibitionEvent(exhibition);
 				hallMap.setName("Основной зал");
-				hallMap.setMapImageUrl(""); // Пустая картинка по умолчанию
+				hallMap.setMapImageUrl(""); 
 				hallMap = exhibitionHallMapService.saveExhibitionHallMap(hallMap);
 			} else {
-				hallMap = hallMaps.get(0); // Берем первую карту зала
+				hallMap = hallMaps.get(0); 
 			}
 
-			// Создаем стенд
+			
 			ExhibitionStand stand = new ExhibitionStand();
 			stand.setExhibitionHallMap(hallMap);
 			stand.setStandNumber(standData.get("standNumber").toString());
 
-			// Позиция (опциональные параметры)
+			
 			if (standData.containsKey("positionX")) {
 				try {
 					stand.setPositionX(Integer.parseInt(standData.get("positionX").toString()));
@@ -471,7 +471,7 @@ public class GalleryOwnerController {
 					return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат positionX"));
 				}
 			} else {
-				stand.setPositionX(0); // Значение по умолчанию
+				stand.setPositionX(0); 
 			}
 
 			if (standData.containsKey("positionY")) {
@@ -481,10 +481,10 @@ public class GalleryOwnerController {
 					return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат positionY"));
 				}
 			} else {
-				stand.setPositionY(0); // Значение по умолчанию
+				stand.setPositionY(0); 
 			}
 
-			// Размеры (обязательные)
+			
 			try {
 				stand.setWidth(Integer.parseInt(standData.get("width").toString()));
 				stand.setHeight(Integer.parseInt(standData.get("height").toString()));
@@ -492,7 +492,7 @@ public class GalleryOwnerController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Некорректный формат width или height"));
 			}
 
-			// Тип стенда (ОБЯЗАТЕЛЬНЫЙ)
+			
 			String typeStr = standData.get("type").toString().toUpperCase();
 			StandType standType;
 			try {
@@ -504,7 +504,7 @@ public class GalleryOwnerController {
 			}
 			stand.setType(standType);
 
-			// Статус стенда (AVAILABLE по умолчанию)
+			
 			stand.setStatus(StandStatus.AVAILABLE);
 
 			ExhibitionStand savedStand = exhibitionStandService.saveExhibitionStand(stand);
@@ -523,7 +523,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем стенд
+			
 			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(standId);
 			if (!standOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Стенд не найден"));
@@ -531,17 +531,17 @@ public class GalleryOwnerController {
 
 			ExhibitionStand stand = standOpt.get();
 
-			// Получаем галерею через выставку и карту зала
+			
 			Long galleryId = stand.getExhibitionHallMap().getExhibitionEvent().getGallery().getId();
 
-			// Проверяем права владельца галереи
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)
 					&& !userService.isCurrentUserAdmin()) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на изменение статуса этого стенда"));
 			}
 
-			// Проверяем наличие параметра status
+			
 			if (!request.containsKey("status")) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Параметр status обязателен"));
 			}
@@ -560,7 +560,7 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Некорректный статус. Допустимые значения: AVAILABLE, BOOKED"));
 			}
 
-			// Проверяем логику смены статуса
+			
 			if (newStatus == StandStatus.BOOKED && stand.getStatus() == StandStatus.BOOKED) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Стенд уже забронирован"));
 			}
@@ -569,7 +569,7 @@ public class GalleryOwnerController {
 				return ResponseEntity.badRequest().body(Map.of("error", "Стенд уже доступен"));
 			}
 
-			// Если меняем на BOOKED, проверяем, нет ли активных бронирований
+			
 			if (newStatus == StandStatus.BOOKED) {
 				List<Booking> standBookings = bookingService.getAllBookings().stream()
 						.filter(booking -> booking.getExhibitionStand().getId().equals(standId)
@@ -600,7 +600,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем выставку
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -609,26 +609,26 @@ public class GalleryOwnerController {
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 			Long galleryId = exhibition.getGallery().getId();
 
-			// Проверяем права владельца галереи
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)
 					&& !userService.isCurrentUserAdmin()) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на просмотр стендов этой выставки"));
 			}
 
-			// Получаем карты залов для этой выставки
+			
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 
-			// Получаем только доступные стенды
+			
 			List<ExhibitionStand> availableStands = hallMaps.stream()
 					.flatMap(hallMap -> exhibitionStandService.getExhibitionStandsByHallMapId(hallMap.getId()).stream())
 					.filter(stand -> stand.getStatus() == StandStatus.AVAILABLE)
 					.collect(Collectors.toList());
 
-			// Получаем все бронирования для проверки статусов
+			
 			List<Booking> allBookings = bookingService.getAllBookings();
 
-			// Отмечаем стенды, которые забронированы (BOOKED)
+			
 			List<ExhibitionStand> bookedStands = hallMaps.stream()
 					.flatMap(hallMap -> exhibitionStandService.getExhibitionStandsByHallMapId(hallMap.getId()).stream())
 					.filter(stand -> {
@@ -640,7 +640,7 @@ public class GalleryOwnerController {
 					})
 					.collect(Collectors.toList());
 
-			// Преобразуем в DTO
+			
 			List<Map<String, Object>> availableStandDTOs = availableStands.stream()
 					.map(this::convertStandToDTO)
 					.collect(Collectors.toList());
@@ -667,7 +667,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Проверяем, что выставка существует
+			
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
@@ -676,14 +676,14 @@ public class GalleryOwnerController {
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 			Long galleryId = exhibition.getGallery().getId();
 
-			// Проверяем права владельца галереи
+			
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)
 					&& !userService.isCurrentUserAdmin()) {
 				return ResponseEntity.status(HttpStatus.FORBIDDEN)
 						.body(Map.of("error", "Нет прав на добавление стендов к этой выставке"));
 			}
 
-			// Получаем или создаем карту зала по умолчанию
+			
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 			ExhibitionHallMap hallMap;
 
@@ -704,7 +704,7 @@ public class GalleryOwnerController {
 				Map<String, Object> standData = standsData.get(i);
 
 				try {
-					// Проверка обязательных полей (ДОБАВЛЕНО type)
+					
 					if (!standData.containsKey("standNumber") || !standData.containsKey("width") ||
 							!standData.containsKey("height") || !standData.containsKey("type")) {
 						errors.add("Стенд " + (i + 1) + ": отсутствуют обязательные поля standNumber, width, height или type");
@@ -715,17 +715,17 @@ public class GalleryOwnerController {
 					stand.setExhibitionHallMap(hallMap);
 					stand.setStandNumber(standData.get("standNumber").toString());
 
-					// Позиция
+					
 					stand.setPositionX(standData.containsKey("positionX") ?
 							Integer.parseInt(standData.get("positionX").toString()) : 0);
 					stand.setPositionY(standData.containsKey("positionY") ?
 							Integer.parseInt(standData.get("positionY").toString()) : 0);
 
-					// Размеры
+					
 					stand.setWidth(Integer.parseInt(standData.get("width").toString()));
 					stand.setHeight(Integer.parseInt(standData.get("height").toString()));
 
-					// Тип (ОБЯЗАТЕЛЬНЫЙ)
+					
 					String typeStr = standData.get("type").toString().toUpperCase();
 					StandType standType;
 					try {
@@ -737,7 +737,7 @@ public class GalleryOwnerController {
 					}
 					stand.setType(standType);
 
-					// Статус по умолчанию - AVAILABLE
+					
 					stand.setStatus(StandStatus.AVAILABLE);
 
 					ExhibitionStand savedStand = exhibitionStandService.saveExhibitionStand(stand);
@@ -748,7 +748,7 @@ public class GalleryOwnerController {
 				}
 			}
 
-			// Преобразуем созданные стенды в DTO
+			
 			List<Map<String, Object>> standDTOs = createdStands.stream()
 					.map(this::convertStandToDTO)
 					.collect(Collectors.toList());
@@ -770,9 +770,9 @@ public class GalleryOwnerController {
 					.body(Map.of("error", "Ошибка добавления стендов: " + e.getMessage()));
 		}
 	}
-// В GalleryOwnerController.java
 
-// ==================== УПРАВЛЕНИЕ БРОНИРОВАНИЯМИ ====================
+
+
 
 	@GetMapping("/bookings")
 	@Operation(summary = "Получить все бронирования для моих галерей")
@@ -783,14 +783,14 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем все галереи владельца
+			
 			List<Gallery> ownerGalleries = galleryService.getGalleriesByOwnerId(currentUser.getId());
 			List<Long> ownerGalleryIds = ownerGalleries.stream().map(Gallery::getId).collect(Collectors.toList());
 
-			// Получаем все бронирования
+			
 			List<Booking> allBookings = bookingService.getAllBookings();
 
-			// Фильтруем бронирования по галереям владельца
+			
 			List<Booking> galleryBookings = allBookings.stream()
 					.filter(booking -> {
 						ExhibitionEvent exhibition = booking.getExhibitionStand()
@@ -799,7 +799,7 @@ public class GalleryOwnerController {
 					})
 					.collect(Collectors.toList());
 
-			// Дополнительная фильтрация по exhibitionId
+			
 			if (exhibitionId != null) {
 				galleryBookings = galleryBookings.stream()
 						.filter(booking -> booking.getExhibitionStand()
@@ -807,7 +807,7 @@ public class GalleryOwnerController {
 						.collect(Collectors.toList());
 			}
 
-			// Фильтрация по статусу, если указан
+			
 			if (status != null && !status.isEmpty()) {
 				try {
 					BookingStatus bookingStatus = BookingStatus.valueOf(status.toUpperCase());
@@ -819,12 +819,12 @@ public class GalleryOwnerController {
 				}
 			}
 
-			// Применяем пагинацию
+			
 			int start = Math.min(page * size, galleryBookings.size());
 			int end = Math.min(start + size, galleryBookings.size());
 			List<Booking> paginatedBookings = galleryBookings.subList(start, end);
 
-			// Преобразуем в DTO
+			
 			List<Map<String, Object>> bookingDTOs = paginatedBookings.stream()
 					.map(this::convertBookingToDTO)
 					.collect(Collectors.toList());
@@ -844,7 +844,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем бронирование
+			
 			Optional<Booking> bookingOpt = bookingService.getBookingById(id);
 			if (!bookingOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Бронирование не найдено"));
@@ -852,7 +852,7 @@ public class GalleryOwnerController {
 
 			Booking booking = bookingOpt.get();
 
-			// Проверяем права владельца галереи
+			
 			ExhibitionEvent exhibition = booking.getExhibitionStand()
 					.getExhibitionHallMap().getExhibitionEvent();
 			Long galleryId = exhibition.getGallery().getId();
@@ -863,13 +863,13 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Нет прав на подтверждение этого бронирования"));
 			}
 
-			// Проверяем текущий статус
+			
 			if (booking.getStatus() != BookingStatus.PENDING) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Нельзя подтвердить бронирование в статусе: " + booking.getStatus()));
 			}
 
-			// Проверяем, что стенд все еще доступен
+			
 			Long standId = booking.getExhibitionStand().getId();
 			List<Booking> standBookings = bookingService.getAllBookings().stream()
 					.filter(b -> b.getExhibitionStand().getId().equals(standId))
@@ -881,22 +881,22 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Стенд уже забронирован другим художником"));
 			}
 
-			// Проверяем выставку
+			
 			if (exhibition.getEndDate().isBefore(LocalDateTime.now())) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Выставка уже завершена"));
 			}
 
-			// Подтверждаем бронирование
+			
 			booking.setStatus(BookingStatus.CONFIRMED);
 
-			// Меняем статус стенда на BOOKED
+			
 			ExhibitionStand stand = booking.getExhibitionStand();
 			stand.setStatus(StandStatus.BOOKED);
 			exhibitionStandService.saveExhibitionStand(stand);
 
 			Booking updatedBooking = bookingService.saveBooking(booking);
 
-			// Можно добавить отправку уведомления художнику
+			
 			String message = "Бронирование подтверждено";
 			if (request != null && request.containsKey("message")) {
 				message += ". " + request.get("message");
@@ -917,7 +917,7 @@ public class GalleryOwnerController {
 		try {
 			User currentUser = userService.getCurrentUser();
 
-			// Получаем бронирование
+			
 			Optional<Booking> bookingOpt = bookingService.getBookingById(id);
 			if (!bookingOpt.isPresent()) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Бронирование не найдено"));
@@ -925,7 +925,7 @@ public class GalleryOwnerController {
 
 			Booking booking = bookingOpt.get();
 
-			// Проверяем права владельца галереи
+			
 			ExhibitionEvent exhibition = booking.getExhibitionStand()
 					.getExhibitionHallMap().getExhibitionEvent();
 			Long galleryId = exhibition.getGallery().getId();
@@ -936,22 +936,22 @@ public class GalleryOwnerController {
 						.body(Map.of("error", "Нет прав на отклонение этого бронирования"));
 			}
 
-			// Проверяем текущий статус
+			
 			if (booking.getStatus() != BookingStatus.PENDING) {
 				return ResponseEntity.badRequest()
 						.body(Map.of("error", "Нельзя отклонить бронирование в статусе: " + booking.getStatus()));
 			}
 
-			// Проверяем наличие причины отклонения
+			
 			String reason = request.get("reason");
 			if (reason == null || reason.trim().isEmpty()) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Причина отклонения обязательна"));
 			}
 
-			// Отклоняем бронирование
+			
 			booking.setStatus(BookingStatus.CANCELLED);
 
-			// Возвращаем статус стенда на AVAILABLE
+			
 			ExhibitionStand stand = booking.getExhibitionStand();
 			stand.setStatus(StandStatus.AVAILABLE);
 			exhibitionStandService.saveExhibitionStand(stand);
@@ -966,7 +966,7 @@ public class GalleryOwnerController {
 		}
 	}
 
-// ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
 
 	private Map<String, Object> convertBookingToDTO(Booking booking) {
 		Map<String, Object> dto = new HashMap<>();
@@ -1015,7 +1015,7 @@ public class GalleryOwnerController {
 		return dto;
 	}
 
-	// ==================== СТАТИСТИКА ====================
+	
 
 	@GetMapping("/statistics")
 	@Operation(summary = "Получить статистику по моим галереям")
@@ -1033,7 +1033,7 @@ public class GalleryOwnerController {
 		}
 	}
 
-	// ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+	
 
 	private Map<String, Object> convertGalleryToDTO(Gallery gallery) {
 		Map<String, Object> dto = new HashMap<>();
@@ -1098,7 +1098,7 @@ public class GalleryOwnerController {
 		return dto;
 	}
 
-	// Вспомогательный метод для получения галерей владельца
+	
 	private List<Gallery> getGalleriesByOwnerId(Long ownerId) {
 		return galleryService.getAllGalleries().stream().filter(gallery -> {
 			if (gallery.getOwner() == null) {

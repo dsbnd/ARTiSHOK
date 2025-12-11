@@ -67,7 +67,7 @@ public class BookingService {
                 .map(booking -> {
                     booking.setStatus(newStatus);
                     
-                    // Обновляем статус стенда при изменении статуса бронирования
+
                     ExhibitionStand stand = booking.getExhibitionStand();
                     if (newStatus == BookingStatus.CONFIRMED) {
                         stand.setStatus(artishok.entities.enums.StandStatus.BOOKED);
@@ -161,7 +161,7 @@ public class BookingService {
     }
 
     public Booking saveBooking(Booking booking) {
-        // Валидация
+
         if (booking.getExhibitionStand() == null) {
             throw new IllegalArgumentException("Бронирование должно быть связано со стендом");
         }

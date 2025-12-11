@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface GalleryRepository extends JpaRepository<Gallery, Long> {
 
-    // Основные методы
+
     List<Gallery> findByStatus(GalleryStatus status);
     List<Gallery> findByNameContainingIgnoreCase(String name);
     boolean existsByName(String name);

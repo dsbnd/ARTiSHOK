@@ -29,108 +29,108 @@ import java.util.Arrays;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-	@Autowired
-	private JwtAuthenticationFilter jwtAuthFilter;
-	@Autowired
-	private CustomUserDetailsService userDetailsService;
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthFilter;
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
 
-	@Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5500}")
-	private String[] allowedOrigins;
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5500}")
+    private String[] allowedOrigins;
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(csrf -> csrf.disable())
-				.authorizeHttpRequests(authz -> authz
-						// Публичные эндпоинты (доступны всем)
-						.requestMatchers("/api/auth/**", // Регистрация и вход
-								"/api/public/**", // Публичные данные
-								"/swagger-ui/**", // Swagger UI
-								"/v3/api-docs/**", // Swagger документация
-								"/swagger-resources/**", "/webjars/**", "/error")
-						.permitAll()
-						.requestMatchers("/exhibition-events/**", "/galleries/**", "/api/health", "/api/test",
-								"/api/debug/**")
-						.permitAll()
-						// Администратор (только ADMIN)
-						.requestMatchers("/admin/**").hasRole("ADMIN")
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authz -> authz
 
-						// Владельцы галерей (GALLERY_OWNER и ADMIN)
-						.requestMatchers("/gallery-owner/**").hasAnyRole("GALLERY_OWNER", "ADMIN")
+                        .requestMatchers("/api/auth/**", // Регистрация и вход
+                                "/api/public/**", // Публичные данные
+                                "/swagger-ui/**", // Swagger UI
+                                "/v3/api-docs/**", // Swagger документация
+                                "/swagger-resources/**", "/webjars/**", "/error")
+                        .permitAll()
+                        .requestMatchers("/exhibition-events/**", "/galleries/**", "/api/health", "/api/test",
+                                "/api/debug/**")
+                        .permitAll()
+                        // Администратор (только ADMIN)
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
 
-						// Художники (ARTIST и ADMIN)
-						.requestMatchers("/artist/**").hasAnyRole("ARTIST", "ADMIN")
-						// Администратор (только ADMIN)
-						.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Владельцы галерей (GALLERY_OWNER и ADMIN)
+                        .requestMatchers("/gallery-owner/**").hasAnyRole("GALLERY_OWNER", "ADMIN")
 
-						// Владельцы галерей (GALLERY_OWNER и ADMIN)
-						.requestMatchers("/api/galleries/manage/**", "/api/events/manage/**",
-								"/api/bookings/confirm/**")
-						.hasAnyRole("GALLERY_OWNER", "ADMIN")
+                        // Художники (ARTIST и ADMIN)
+                        .requestMatchers("/artist/**").hasAnyRole("ARTIST", "ADMIN")
+                        // Администратор (только ADMIN)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-						// Художники (ARTIST, GALLERY_OWNER и ADMIN)
-						.requestMatchers("/api/artworks/**", "/api/bookings/**")
-						.hasAnyRole("ARTIST", "GALLERY_OWNER", "ADMIN")
+                        // Владельцы галерей (GALLERY_OWNER и ADMIN)
+                        .requestMatchers("/api/galleries/manage/**", "/api/events/manage/**",
+                                "/api/bookings/confirm/**")
+                        .hasAnyRole("GALLERY_OWNER", "ADMIN")
 
-						// Профиль (все аутентифицированные пользователи)
-						.requestMatchers("/api/profile/**").authenticated()
+                        // Художники (ARTIST, GALLERY_OWNER и ADMIN)
+                        .requestMatchers("/api/artworks/**", "/api/bookings/**")
+                        .hasAnyRole("ARTIST", "GALLERY_OWNER", "ADMIN")
 
-						// Защищенные API (все аутентифицированные)
-						.requestMatchers("/api/**").authenticated()
+                        // Профиль (все аутентифицированные пользователи)
+                        .requestMatchers("/api/profile/**").authenticated()
 
-						.anyRequest().permitAll())
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authenticationProvider(authenticationProvider())
-				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                        // Защищенные API (все аутентифицированные)
+                        .requestMatchers("/api/**").authenticated()
 
-		return http.build();
-	}
+                        .anyRequest().permitAll())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-	// CORS конфигурация
-	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration configuration = new CorsConfiguration();
+        return http.build();
+    }
 
-		// Разрешаем указанные источники
-		configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
-		// Разрешаем методы
-		configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
 
-		// Разрешаем заголовки
-		configuration.setAllowedHeaders(
-				Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Origin",
-						"Access-Control-Request-Method", "Access-Control-Request-Headers", "Accept-Language"));
 
-		// Разрешаем куки и аутентификацию
-		configuration.setAllowCredentials(true);
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
-		// Время кэширования CORS
-		configuration.setMaxAge(3600L);
 
-		// Экспортируемые заголовки
-		configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
 
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return source;
-	}
 
-	@Bean
-	public AuthenticationProvider authenticationProvider() {
-		DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-		authProvider.setUserDetailsService(userDetailsService);
-		authProvider.setPasswordEncoder(passwordEncoder());
-		return authProvider;
-	}
+        configuration.setAllowedHeaders(
+                Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control", "Origin",
+                        "Access-Control-Request-Method", "Access-Control-Request-Headers", "Accept-Language"));
 
-	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-		return config.getAuthenticationManager();
-	}
+
+        configuration.setAllowCredentials(true);
+
+
+        configuration.setMaxAge(3600L);
+
+
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 
 }
