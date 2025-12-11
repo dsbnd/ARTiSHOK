@@ -26,330 +26,298 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class GalleryService {
-    @Autowired
-    private  GalleryRepository galleryRepository;
+	@Autowired
+	private GalleryRepository galleryRepository;
 
-    @Autowired
-    private  GalleryOwnershipRepository galleryOwnershipRepository;
-    @Autowired
-    private  UserService userService;
+	@Autowired
+	private GalleryOwnershipRepository galleryOwnershipRepository;
+	@Autowired
+	private UserService userService;
 
+	public List<Gallery> getAllGalleries() {
+		List<Gallery> galleries = galleryRepository.findAll();
 
-    
+		galleries.forEach(this::loadOwnerAndDateForGallery);
+		return galleries;
+	}
 
-    public List<Gallery> getAllGalleries() {
-        List<Gallery> galleries = galleryRepository.findAll();
-        
-        galleries.forEach(this::loadOwnerAndDateForGallery);
-        return galleries;
-    }
+	public Optional<Gallery> getGalleryById(Long id) {
+		Optional<Gallery> galleryOpt = galleryRepository.findById(id);
+		galleryOpt.ifPresent(this::loadOwnerAndDateForGallery);
+		return galleryOpt;
+	}
 
-    public Optional<Gallery> getGalleryById(Long id) {
-        Optional<Gallery> galleryOpt = galleryRepository.findById(id);
-        galleryOpt.ifPresent(this::loadOwnerAndDateForGallery);
-        return galleryOpt;
-    }
+	public Gallery saveGallery(Gallery gallery) {
+		Gallery savedGallery = galleryRepository.save(gallery);
+		loadOwnerAndDateForGallery(savedGallery);
+		return savedGallery;
+	}
 
-    public Gallery saveGallery(Gallery gallery) {
-        Gallery savedGallery = galleryRepository.save(gallery);
-        loadOwnerAndDateForGallery(savedGallery);
-        return savedGallery;
-    }
+	public void deleteGallery(Long id) {
 
-    public void deleteGallery(Long id) {
-        
-        galleryOwnershipRepository.findByGalleryId(id)
-                .forEach(galleryOwnershipRepository::delete);
-        
-        galleryRepository.deleteById(id);
-    }
+		galleryOwnershipRepository.findByGalleryId(id).forEach(galleryOwnershipRepository::delete);
 
-    
+		galleryRepository.deleteById(id);
+	}
 
-    /**
-     * Создать галерею и назначить владельца
-     */
-    public Map<String, Object> createGalleryWithOwner(Long ownerId, Map<String, Object> galleryData) {
-        
-        User owner = userService.getUserById(ownerId)
-                .orElseThrow(() -> new RuntimeException("Владелец не найден"));
+	/**
+	 * Создать галерею и назначить владельца
+	 */
+	public Map<String, Object> createGalleryWithOwner(Long ownerId, Map<String, Object> galleryData) {
 
-        
-        if (owner.getRole() != UserRole.GALLERY_OWNER && owner.getRole() != UserRole.ADMIN) {
-            throw new RuntimeException("Только владельцы галерей и администраторы могут создавать галереи");
-        }
+		User owner = userService.getUserById(ownerId).orElseThrow(() -> new RuntimeException("Владелец не найден"));
 
-        
-        if (!galleryData.containsKey("name") || !galleryData.containsKey("address")) {
-            throw new RuntimeException("Поля name и address обязательны");
-        }
+		if (owner.getRole() != UserRole.GALLERY_OWNER && owner.getRole() != UserRole.ADMIN) {
+			throw new RuntimeException("Только владельцы галерей и администраторы могут создавать галереи");
+		}
 
-        
-        Gallery gallery = new Gallery();
-        gallery.setName(galleryData.get("name").toString());
-        gallery.setAddress(galleryData.get("address").toString());
-        gallery.setDescription(galleryData.containsKey("description") ?
-                galleryData.get("description").toString() : "");
-        gallery.setContactPhone(galleryData.containsKey("contactPhone") ?
-                galleryData.get("contactPhone").toString() : "");
-        gallery.setContactEmail(galleryData.containsKey("contactEmail") ?
-                galleryData.get("contactEmail").toString() : owner.getEmail());
-        gallery.setLogoUrl(galleryData.containsKey("logoUrl") ?
-                galleryData.get("logoUrl").toString() : null);
+		if (!galleryData.containsKey("name") || !galleryData.containsKey("address")) {
+			throw new RuntimeException("Поля name и address обязательны");
+		}
 
-        gallery.setAdminComment(null);
+		Gallery gallery = new Gallery();
+		gallery.setName(galleryData.get("name").toString());
+		gallery.setAddress(galleryData.get("address").toString());
+		gallery.setDescription(galleryData.containsKey("description") ? galleryData.get("description").toString() : "");
+		gallery.setContactPhone(
+				galleryData.containsKey("contactPhone") ? galleryData.get("contactPhone").toString() : "");
+		gallery.setContactEmail(galleryData.containsKey("contactEmail") ? galleryData.get("contactEmail").toString()
+				: owner.getEmail());
+		gallery.setLogoUrl(galleryData.containsKey("logoUrl") ? galleryData.get("logoUrl").toString() : null);
 
-        
-        Gallery savedGallery = galleryRepository.save(gallery);
+		gallery.setAdminComment(null);
 
-        
-        GalleryOwnership ownership = new GalleryOwnership();
-        ownership.setGallery(savedGallery);
-        ownership.setOwner(owner);
-        ownership.setIsPrimary(true);
-        ownership.setCreatedAt(LocalDateTime.now());
+		Gallery savedGallery = galleryRepository.save(gallery);
 
-        galleryOwnershipRepository.save(ownership);
+		GalleryOwnership ownership = new GalleryOwnership();
+		ownership.setGallery(savedGallery);
+		ownership.setOwner(owner);
+		ownership.setIsPrimary(true);
+		ownership.setCreatedAt(LocalDateTime.now());
 
-        
-        loadOwnerAndDateForGallery(savedGallery);
+		galleryOwnershipRepository.save(ownership);
 
-        return convertToDTO(savedGallery);
-    }
-    public Optional<User> getGalleryOwner(Long galleryId) {
-        return galleryRepository.findPrimaryOwnerByGalleryId(galleryId);
-    }
-    /**
-     * Получить галереи владельца
-     */
-    public List<Map<String, Object>> getOwnerGalleries(Long ownerId, String status, int page, int size) {
-        List<Gallery> galleries;
+		loadOwnerAndDateForGallery(savedGallery);
 
-        if (status != null && !status.isEmpty()) {
-            try {
-                GalleryStatus galleryStatus = GalleryStatus.valueOf(status.toUpperCase());
-                galleries = galleryRepository.findByOwnerIdAndStatus(ownerId, galleryStatus);
-            } catch (IllegalArgumentException e) {
-                galleries = galleryRepository.findByOwnerId(ownerId);
-            }
-        } else {
-            galleries = galleryRepository.findByOwnerId(ownerId);
-        }
+		return convertToDTO(savedGallery);
+	}
 
-        
-        galleries.forEach(this::loadOwnerAndDateForGallery);
+	public Optional<User> getGalleryOwner(Long galleryId) {
+		return galleryRepository.findPrimaryOwnerByGalleryId(galleryId);
+	}
 
-        
-        int start = Math.min(page * size, galleries.size());
-        int end = Math.min(start + size, galleries.size());
-        List<Gallery> paginatedGalleries = galleries.subList(start, end);
+	/**
+	 * Получить галереи владельца
+	 */
+	public List<Map<String, Object>> getOwnerGalleries(Long ownerId, String status, int page, int size) {
+		List<Gallery> galleries;
 
-        return paginatedGalleries.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
+		if (status != null && !status.isEmpty()) {
+			try {
+				GalleryStatus galleryStatus = GalleryStatus.valueOf(status.toUpperCase());
+				galleries = galleryRepository.findByOwnerIdAndStatus(ownerId, galleryStatus);
+			} catch (IllegalArgumentException e) {
+				galleries = galleryRepository.findByOwnerId(ownerId);
+			}
+		} else {
+			galleries = galleryRepository.findByOwnerId(ownerId);
+		}
 
-    /**
-     * Проверить, может ли владелец обновить галерею
-     */
-    public boolean canOwnerUpdateGallery(Long ownerId, Long galleryId) {
-        return galleryOwnershipRepository.existsByGalleryIdAndOwnerId(galleryId, ownerId);
-    }
+		galleries.forEach(this::loadOwnerAndDateForGallery);
 
-    /**
-     * Обновить галерею от имени владельца
-     */
-    public Map<String, Object> updateGallery(Long galleryId, Map<String, Object> updates) {
-        Gallery gallery = galleryRepository.findById(galleryId)
-                .orElseThrow(() -> new RuntimeException("Галерея не найдена"));
+		int start = Math.min(page * size, galleries.size());
+		int end = Math.min(start + size, galleries.size());
+		List<Gallery> paginatedGalleries = galleries.subList(start, end);
 
-        
-        if (updates.containsKey("name")) {
-            gallery.setName(updates.get("name").toString());
-        }
-        if (updates.containsKey("address")) {
-            gallery.setAddress(updates.get("address").toString());
-        }
-        if (updates.containsKey("description")) {
-            gallery.setDescription(updates.get("description").toString());
-        }
-        if (updates.containsKey("contactPhone")) {
-            gallery.setContactPhone(updates.get("contactPhone").toString());
-        }
-        if (updates.containsKey("contactEmail")) {
-            gallery.setContactEmail(updates.get("contactEmail").toString());
-        }
-        if (updates.containsKey("logoUrl")) {
-            gallery.setLogoUrl(updates.get("logoUrl").toString());
-        }
+		return paginatedGalleries.stream().map(this::convertToDTO).collect(Collectors.toList());
+	}
 
-        
-        if (gallery.getStatus() == GalleryStatus.APPROVED) {
-            gallery.setStatus(GalleryStatus.PENDING);
-            gallery.setAdminComment(null);
-        }
+	/**
+	 * Проверить, может ли владелец обновить галерею
+	 */
+	public boolean canOwnerUpdateGallery(Long ownerId, Long galleryId) {
+		return galleryOwnershipRepository.existsByGalleryIdAndOwnerId(galleryId, ownerId);
+	}
 
-        Gallery updatedGallery = galleryRepository.save(gallery);
-        loadOwnerAndDateForGallery(updatedGallery);
+	/**
+	 * Обновить галерею от имени владельца
+	 */
+	public Map<String, Object> updateGallery(Long galleryId, Map<String, Object> updates) {
+		Gallery gallery = galleryRepository.findById(galleryId)
+				.orElseThrow(() -> new RuntimeException("Галерея не найдена"));
 
-        return convertToDTO(updatedGallery);
-    }
+		if (updates.containsKey("name")) {
+			gallery.setName(updates.get("name").toString());
+		}
+		if (updates.containsKey("address")) {
+			gallery.setAddress(updates.get("address").toString());
+		}
+		if (updates.containsKey("description")) {
+			gallery.setDescription(updates.get("description").toString());
+		}
+		if (updates.containsKey("contactPhone")) {
+			gallery.setContactPhone(updates.get("contactPhone").toString());
+		}
+		if (updates.containsKey("contactEmail")) {
+			gallery.setContactEmail(updates.get("contactEmail").toString());
+		}
+		if (updates.containsKey("logoUrl")) {
+			gallery.setLogoUrl(updates.get("logoUrl").toString());
+		}
 
-    /**
-     * Получить статистику галереи для владельца
-     */
-    public Map<String, Object> getGalleryStatistics(Long ownerId, Long galleryId) {
-        Map<String, Object> stats = new HashMap<>();
+		if (gallery.getStatus() == GalleryStatus.APPROVED) {
+			gallery.setStatus(GalleryStatus.PENDING);
+			gallery.setAdminComment(null);
+		}
 
-        
-        List<Gallery> ownerGalleries;
-        if (galleryId != null) {
-            ownerGalleries = galleryRepository.findByOwnerId(ownerId).stream()
-                    .filter(g -> g.getId().equals(galleryId))
-                    .collect(Collectors.toList());
-        } else {
-            ownerGalleries = galleryRepository.findByOwnerId(ownerId);
-        }
+		Gallery updatedGallery = galleryRepository.save(gallery);
+		loadOwnerAndDateForGallery(updatedGallery);
 
-        
-        ownerGalleries.forEach(this::loadOwnerAndDateForGallery);
+		return convertToDTO(updatedGallery);
+	}
 
-        
-        stats.put("totalGalleries", ownerGalleries.size());
-        stats.put("pendingGalleries", countByStatus(ownerGalleries, GalleryStatus.PENDING));
-        stats.put("approvedGalleries", countByStatus(ownerGalleries, GalleryStatus.APPROVED));
-        stats.put("rejectedGalleries", countByStatus(ownerGalleries, GalleryStatus.REJECTED));
+	/**
+	 * Получить статистику галереи для владельца
+	 */
+	public Map<String, Object> getGalleryStatistics(Long ownerId, Long galleryId) {
+		Map<String, Object> stats = new HashMap<>();
 
-        
-        if (galleryId != null && !ownerGalleries.isEmpty()) {
-            Gallery gallery = ownerGalleries.get(0);
-            Map<String, Object> galleryDetails = convertToDTO(gallery);
-            stats.put("galleryDetails", galleryDetails);
-        }
+		List<Gallery> ownerGalleries;
+		if (galleryId != null) {
+			ownerGalleries = galleryRepository.findByOwnerId(ownerId).stream().filter(g -> g.getId().equals(galleryId))
+					.collect(Collectors.toList());
+		} else {
+			ownerGalleries = galleryRepository.findByOwnerId(ownerId);
+		}
 
-        return stats;
-    }
+		ownerGalleries.forEach(this::loadOwnerAndDateForGallery);
 
-    
+		stats.put("totalGalleries", ownerGalleries.size());
+		stats.put("pendingGalleries", countByStatus(ownerGalleries, GalleryStatus.PENDING));
+		stats.put("approvedGalleries", countByStatus(ownerGalleries, GalleryStatus.APPROVED));
+		stats.put("rejectedGalleries", countByStatus(ownerGalleries, GalleryStatus.REJECTED));
 
-    /**
-     * Загрузить владельца и дату создания для галереи
-     */
-    private void loadOwnerAndDateForGallery(Gallery gallery) {
-        
-        Optional<User> primaryOwnerOpt = galleryRepository.findPrimaryOwnerByGalleryId(gallery.getId());
-        if (primaryOwnerOpt.isPresent()) {
-            gallery.setOwner(primaryOwnerOpt.get());
-        }
+		if (galleryId != null && !ownerGalleries.isEmpty()) {
+			Gallery gallery = ownerGalleries.get(0);
+			Map<String, Object> galleryDetails = convertToDTO(gallery);
+			stats.put("galleryDetails", galleryDetails);
+		}
 
-        
-        Optional<GalleryOwnership> ownershipOpt = galleryOwnershipRepository.findPrimaryOwner(gallery.getId());
-        if (ownershipOpt.isPresent()) {
-            gallery.setCreatedAt(ownershipOpt.get().getCreatedAt());
-        }
-    }
+		return stats;
+	}
 
-    private Map<String, Object> convertToDTO(Gallery gallery) {
-        Map<String, Object> dto = new HashMap<>();
-        dto.put("id", gallery.getId());
-        dto.put("name", gallery.getName());
-        dto.put("description", gallery.getDescription());
-        dto.put("address", gallery.getAddress());
-        dto.put("contactPhone", gallery.getContactPhone());
-        dto.put("contactEmail", gallery.getContactEmail());
-        dto.put("logoUrl", gallery.getLogoUrl());
-        dto.put("status", gallery.getStatus().toString());
-        dto.put("adminComment", gallery.getAdminComment());
+	/**
+	 * Загрузить владельца и дату создания для галереи
+	 */
+	private void loadOwnerAndDateForGallery(Gallery gallery) {
 
-        
-        if (gallery.getCreatedAt() != null) {
-            dto.put("createdAt", gallery.getCreatedAt());
-        }
+		Optional<User> primaryOwnerOpt = galleryRepository.findPrimaryOwnerByGalleryId(gallery.getId());
+		if (primaryOwnerOpt.isPresent()) {
+			gallery.setOwner(primaryOwnerOpt.get());
+		}
 
-        
-        if (gallery.getOwner() != null) {
-            Map<String, Object> ownerInfo = new HashMap<>();
-            ownerInfo.put("id", gallery.getOwner().getId());
-            ownerInfo.put("fullName", gallery.getOwner().getFullName());
-            ownerInfo.put("email", gallery.getOwner().getEmail());
-            ownerInfo.put("phone", gallery.getOwner().getPhoneNumber());
-            dto.put("owner", ownerInfo);
-        }
+		Optional<GalleryOwnership> ownershipOpt = galleryOwnershipRepository.findPrimaryOwner(gallery.getId());
+		if (ownershipOpt.isPresent()) {
+			gallery.setCreatedAt(ownershipOpt.get().getCreatedAt());
+		}
+	}
 
-        return dto;
-    }
+	private Map<String, Object> convertToDTO(Gallery gallery) {
+		Map<String, Object> dto = new HashMap<>();
+		dto.put("id", gallery.getId());
+		dto.put("name", gallery.getName());
+		dto.put("description", gallery.getDescription());
+		dto.put("address", gallery.getAddress());
+		dto.put("contactPhone", gallery.getContactPhone());
+		dto.put("contactEmail", gallery.getContactEmail());
+		dto.put("logoUrl", gallery.getLogoUrl());
+		dto.put("status", gallery.getStatus().toString());
+		dto.put("adminComment", gallery.getAdminComment());
 
-    private long countByStatus(List<Gallery> galleries, GalleryStatus status) {
-        return galleries.stream()
-                .filter(gallery -> gallery.getStatus() == status)
-                .count();
-    }
+		if (gallery.getCreatedAt() != null) {
+			dto.put("createdAt", gallery.getCreatedAt());
+		}
 
-    
+		if (gallery.getOwner() != null) {
+			Map<String, Object> ownerInfo = new HashMap<>();
+			ownerInfo.put("id", gallery.getOwner().getId());
+			ownerInfo.put("fullName", gallery.getOwner().getFullName());
+			ownerInfo.put("email", gallery.getOwner().getEmail());
+			ownerInfo.put("phone", gallery.getOwner().getPhoneNumber());
+			dto.put("owner", ownerInfo);
+		}
 
-    /**
-     * Получить галереи по статусу
-     */
-    public List<Gallery> getGalleriesByStatus(GalleryStatus status) {
-        List<Gallery> galleries = galleryRepository.findByStatus(status);
-        galleries.forEach(this::loadOwnerAndDateForGallery);
-        return galleries;
-    }
+		return dto;
+	}
 
-    /**
-     * Получить все галереи, ожидающие модерации
-     */
-    public List<Gallery> getPendingGalleries() {
-        return getGalleriesByStatus(GalleryStatus.PENDING);
-    }
+	private long countByStatus(List<Gallery> galleries, GalleryStatus status) {
+		return galleries.stream().filter(gallery -> gallery.getStatus() == status).count();
+	}
 
-    /**
-     * Получить одобренные галереи
-     */
-    public List<Gallery> getApprovedGalleries() {
-        return getGalleriesByStatus(GalleryStatus.APPROVED);
-    }
+	/**
+	 * Получить галереи по статусу
+	 */
+	public List<Gallery> getGalleriesByStatus(GalleryStatus status) {
+		List<Gallery> galleries = galleryRepository.findByStatus(status);
+		galleries.forEach(this::loadOwnerAndDateForGallery);
+		return galleries;
+	}
 
-    /**
-     * Изменить статус галереи (для модератора/админа)
-     */
-    public Gallery changeGalleryStatus(Long galleryId, GalleryStatus status, String adminComment) {
-        Gallery gallery = galleryRepository.findById(galleryId)
-                .orElseThrow(() -> new RuntimeException("Галерея не найдена"));
+	/**
+	 * Получить все галереи, ожидающие модерации
+	 */
+	public List<Gallery> getPendingGalleries() {
+		return getGalleriesByStatus(GalleryStatus.PENDING);
+	}
 
-        gallery.setStatus(status);
-        if (adminComment != null) {
-            gallery.setAdminComment(adminComment);
-        }
+	/**
+	 * Получить одобренные галереи
+	 */
+	public List<Gallery> getApprovedGalleries() {
+		return getGalleriesByStatus(GalleryStatus.APPROVED);
+	}
 
-        Gallery updatedGallery = galleryRepository.save(gallery);
-        loadOwnerAndDateForGallery(updatedGallery);
-        return updatedGallery;
-    }
+	/**
+	 * Изменить статус галереи (для модератора/админа)
+	 */
+	public Gallery changeGalleryStatus(Long galleryId, GalleryStatus status, String adminComment) {
+		Gallery gallery = galleryRepository.findById(galleryId)
+				.orElseThrow(() -> new RuntimeException("Галерея не найдена"));
 
-    /**
-     * Поиск галерей по имени
-     */
-    public List<Gallery> searchGalleriesByName(String name) {
-        List<Gallery> galleries = galleryRepository.findByNameContainingIgnoreCase(name);
-        galleries.forEach(this::loadOwnerAndDateForGallery);
-        return galleries;
-    }
+		gallery.setStatus(status);
+		if (adminComment != null) {
+			gallery.setAdminComment(adminComment);
+		}
 
-    /**
-     * Проверить, существует ли галерея с таким именем
-     */
-    public boolean existsByName(String name) {
-        return galleryRepository.existsByName(name);
-    }
+		Gallery updatedGallery = galleryRepository.save(gallery);
+		loadOwnerAndDateForGallery(updatedGallery);
+		return updatedGallery;
+	}
 
-    /**
-     * Проверить, существует ли галерея с таким email
-     */
-    public boolean existsByContactEmail(String email) {
-        return galleryRepository.existsByContactEmail(email);
-    }
-    public List<Gallery> getGalleriesByOwnerId(Long ownerId) {
-        return galleryRepository.findByOwnerId(ownerId);
-    }
+	/**
+	 * Поиск галерей по имени
+	 */
+	public List<Gallery> searchGalleriesByName(String name) {
+		List<Gallery> galleries = galleryRepository.findByNameContainingIgnoreCase(name);
+		galleries.forEach(this::loadOwnerAndDateForGallery);
+		return galleries;
+	}
+
+	/**
+	 * Проверить, существует ли галерея с таким именем
+	 */
+	public boolean existsByName(String name) {
+		return galleryRepository.existsByName(name);
+	}
+
+	/**
+	 * Проверить, существует ли галерея с таким email
+	 */
+	public boolean existsByContactEmail(String email) {
+		return galleryRepository.existsByContactEmail(email);
+	}
+
+	public List<Gallery> getGalleriesByOwnerId(Long ownerId) {
+		return galleryRepository.findByOwnerId(ownerId);
+	}
 }

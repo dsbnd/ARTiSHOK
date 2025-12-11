@@ -28,15 +28,18 @@ import java.util.Map;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Администратор", description = "API для администраторов системы")
 public class AdminController {
-
-	private final UserService userService;
-	private final GalleryService galleryService;
+	@Autowired
+	private UserService userService;
+	@Autowired
+	private GalleryService galleryService;
 
 	@GetMapping("/users")
 	@Operation(summary = "Получить всех пользователей")
-	public ResponseEntity<?> getAllUsers(@RequestParam(required = false) UserRole role,
-			@RequestParam(required = false) String search, @RequestParam(required = false) Boolean isActive,
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+	public ResponseEntity<?> getAllUsers(@RequestParam(value = "role", required = false) UserRole role,
+			@RequestParam(value = "search", required = false) String search,
+			@RequestParam(value = "isActive", required = false) Boolean isActive,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "20") int size) {
 
 		try {
 			List<User> users = userService.getAllUsers();
@@ -50,7 +53,7 @@ public class AdminController {
 
 	@GetMapping("/users/{id}")
 	@Operation(summary = "Получить пользователя по ID")
-	public ResponseEntity<?> getUserById(@PathVariable Long id) {
+	public ResponseEntity<?> getUserById(@PathVariable("id") Long id) {
 		try {
 			User user = userService.getUserById(id).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
@@ -62,7 +65,7 @@ public class AdminController {
 
 	@PutMapping("/users/{id}/activate")
 	@Operation(summary = "Активировать/деактивировать пользователя")
-	public ResponseEntity<?> toggleUserActivation(@PathVariable Long id, @RequestBody Map<String, Boolean> request) {
+	public ResponseEntity<?> toggleUserActivation(@PathVariable("id") Long id, @RequestBody Map<String, Boolean> request) {
 
 		try {
 			Boolean isActive = request.get("isActive");
@@ -82,7 +85,7 @@ public class AdminController {
 
 	@PutMapping("/users/{id}/role")
 	@Operation(summary = "Изменить роль пользователя")
-	public ResponseEntity<?> changeUserRole(@PathVariable Long id, @RequestBody Map<String, UserRole> request) {
+	public ResponseEntity<?> changeUserRole(@PathVariable("id") Long id, @RequestBody Map<String, UserRole> request) {
 
 		try {
 			UserRole newRole = request.get("role");
@@ -123,7 +126,7 @@ public class AdminController {
 
 	@PostMapping("/users/{id}/reset-password")
 	@Operation(summary = "Сбросить пароль пользователя")
-	public ResponseEntity<?> resetUserPassword(@PathVariable Long id) {
+	public ResponseEntity<?> resetUserPassword(@PathVariable("id") Long id) {
 		try {
 			String tempPassword = userService.resetUserPassword(id);
 			return ResponseEntity.ok(Map.of("success", true, "message", "Пароль пользователя сброшен", "userId", id,
@@ -135,7 +138,7 @@ public class AdminController {
 
 	@DeleteMapping("/users/{id}")
 	@Operation(summary = "Удалить пользователя")
-	public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+	public ResponseEntity<?> deleteUser(@PathVariable("id") Long id) {
 		try {
 			// Вместо реального удаления деактивируем
 			userService.setUserActive(id, false);
@@ -144,6 +147,7 @@ public class AdminController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Ошибка удаления пользователя"));
 		}
 	}
+
 	@GetMapping("/galleries/pending")
 	@Operation(summary = "Получить галереи ожидающие модерации")
 	public ResponseEntity<?> getPendingGalleries() {
@@ -155,22 +159,24 @@ public class AdminController {
 					.body(Map.of("error", "Ошибка получения галерей на модерации"));
 		}
 	}
+
 	@PutMapping("/galleries/{id}/approve")
 	@Operation(summary = "Одобрить галерею")
-	public ResponseEntity<?> approveGallery(@PathVariable Long id,
-											@RequestBody(required = false) Map<String, String> request) {
+	public ResponseEntity<?> approveGallery(@PathVariable("id") Long id,
+			@RequestBody(required = false) Map<String, String> request) {
 		try {
 			String comment = request != null ? request.get("comment") : "Одобрено администратором";
 			Gallery gallery = galleryService.changeGalleryStatus(id, GalleryStatus.APPROVED, comment);
-			return ResponseEntity.ok(Map.of("success", true, "message", "Галерея одобрена", "gallery",
-					convertGalleryToDTO(gallery)));
+			return ResponseEntity.ok(
+					Map.of("success", true, "message", "Галерея одобрена", "gallery", convertGalleryToDTO(gallery)));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
 		}
 	}
+
 	@PutMapping("/galleries/{id}/reject")
 	@Operation(summary = "Отклонить галерею")
-	public ResponseEntity<?> rejectGallery(@PathVariable Long id, @RequestBody Map<String, String> request) {
+	public ResponseEntity<?> rejectGallery(@PathVariable("id") Long id, @RequestBody Map<String, String> request) {
 		try {
 			String comment = request.get("comment");
 			if (comment == null || comment.trim().isEmpty()) {
@@ -178,15 +184,16 @@ public class AdminController {
 			}
 
 			Gallery gallery = galleryService.changeGalleryStatus(id, GalleryStatus.REJECTED, comment);
-			return ResponseEntity.ok(Map.of("success", true, "message", "Галерея отклонена", "gallery",
-					convertGalleryToDTO(gallery)));
+			return ResponseEntity.ok(
+					Map.of("success", true, "message", "Галерея отклонена", "gallery", convertGalleryToDTO(gallery)));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
 		}
 	}
+
 	@PutMapping("/galleries/{id}/status")
 	@Operation(summary = "Изменить статус галереи")
-	public ResponseEntity<?> changeGalleryStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
+	public ResponseEntity<?> changeGalleryStatus(@PathVariable("id") Long id, @RequestBody Map<String, String> request) {
 		try {
 			String statusStr = request.get("status");
 			String comment = request.get("comment");
@@ -209,6 +216,7 @@ public class AdminController {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
 		}
 	}
+
 	private Map<String, Object> convertGalleryToDTO(Gallery gallery) {
 		Map<String, Object> dto = new HashMap<>();
 		dto.put("id", gallery.getId());
