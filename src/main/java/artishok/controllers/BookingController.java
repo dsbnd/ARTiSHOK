@@ -31,8 +31,8 @@ public class BookingController {
 			@ApiResponse(responseCode = "400", description = "Неверные входные данные"),
 			@ApiResponse(responseCode = "404", description = "Художник или стенд не найден") })
 	@PostMapping
-	public ResponseEntity<?> createBooking(@RequestParam("artist_id") Long artistId,
-			@RequestParam("exhibition_stand_id") Long standId) {
+	public ResponseEntity<?> createBooking(@RequestParam("artistId") Long artistId,
+			@RequestParam("standId") Long standId) {
 
 		try {
 			Booking booking = bookingService.createBooking(artistId, standId);

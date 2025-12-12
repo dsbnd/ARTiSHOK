@@ -31,7 +31,6 @@ public class EmailService {
         try {
             sendHtmlEmail(toEmail, subject, htmlContent);
         } catch (Exception e) {
-            // В режиме разработки просто пропускаем ошибку
             System.out.println("Внимание: письмо не отправлено (режим разработки)");
         }
     }
@@ -59,32 +58,6 @@ public class EmailService {
         mailSender.send(message);
     }
     
-    public void sendSimpleEmail(String to, String subject, String text) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(text);
-            
-            mailSender.send(message);
-            System.out.println("Тестовое письмо отправлено в MailHog");
-        } catch (Exception e) {
-            System.out.println("Ошибка отправки письма: " + e.getMessage());
-            throw e;
-        }
-    }
-    
-    public void testMailHogConnection() {
-        try {
-            sendSimpleEmail("test@artishok.com", "MailHog Test", 
-                "Тестовое письмо из АРТиШОК. Проверьте MailHog UI: http://localhost:8025");
-            System.out.println("Соединение с MailHog работает");
-        } catch (Exception e) {
-            System.out.println("Ошибка соединения с MailHog: " + e.getMessage());
-        }
-    }
-    
     private String createVerificationEmailHtml(String userName, String verificationUrl) {
         return String.format("""
             <!DOCTYPE html>
@@ -106,7 +79,7 @@ public class EmailService {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🎨 АРТиШОК</h1>
+                        <h1>АРТиШОК</h1>
                         <p>Платформа для удобного планирования выставок</p>
                     </div>
                     <div class="content">
@@ -124,10 +97,6 @@ public class EmailService {
                         </div>
                         
                         <p><strong>Ссылка действительна 24 часа.</strong></p>
-                    </div>
-                    <div class="footer">
-                        <p>© 2025 АРТиШОК. Все права защищены.</p>
-                        <p>Это письмо отправлено автоматически.</p>
                     </div>
                 </div>
             </body>
@@ -155,7 +124,7 @@ public class EmailService {
             <body>
                 <div class="container">
                     <div class="header">
-                        <h1>🎉 Добро пожаловать в АРТиШОК!</h1>
+                        <h1>Добро пожаловать в АРТиШОК!</h1>
                         <p>Ваш аккаунт успешно активирован</p>
                     </div>
                     <div class="content">
@@ -169,10 +138,6 @@ public class EmailService {
                                 Начать работу →
                             </a>
                         </div>
-                    </div>
-                    <div class="footer">
-                        <p>© 2024 АРТиШОК. Платформа для арт-сообщества</p>
-                        <p>Это письмо отправлено автоматически.</p>
                     </div>
                 </div>
             </body>

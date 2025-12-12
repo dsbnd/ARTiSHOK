@@ -29,7 +29,7 @@ public class UserService {
 		this.passwordEncoder = passwordEncoder;
 		this.userRepository = userRepository;
 		this.emailVerificationService = emailVerificationService;
-		this.userActivityLogService = userActivityLogService; 
+		this.userActivityLogService = userActivityLogService;
 	}
 
 	@Value("${app.email.verification.enabled:true}")
@@ -45,29 +45,25 @@ public class UserService {
 			throw new IllegalArgumentException("Пользователь с таким email уже существует");
 		}
 
-		
 		user.setPasswordHash(passwordEncoder.encode(plainPassword));
 
-		
 		if (user.getRegistrationDate() == null) {
 			user.setRegistrationDate(LocalDateTime.now());
 		}
 
-		
-        if (emailVerificationEnabled) {
-            user.setIsActive(false);
-        } else {
-            user.setIsActive(true);
-        }
+		if (emailVerificationEnabled) {
+			user.setIsActive(false);
+		} else {
+			user.setIsActive(true);
+		}
 
-        User savedUser = userRepository.save(user);
+		User savedUser = userRepository.save(user);
 
-        
-        if (emailVerificationEnabled) {
-            emailVerificationService.sendVerificationEmail(savedUser);
-        }
+		if (emailVerificationEnabled) {
+			emailVerificationService.sendVerificationEmail(savedUser);
+		}
 
-        return savedUser;
+		return savedUser;
 	}
 
 	public Optional<User> getUserById(Long id) {
@@ -78,11 +74,10 @@ public class UserService {
 		return userRepository.findByEmail(email);
 	}
 
-	
 	@Transactional
 	public User updateUser(Long id, User updatedUser) {
 		return userRepository.findById(id).map(existingUser -> {
-			
+
 			if (updatedUser.getFullName() != null) {
 				existingUser.setFullName(updatedUser.getFullName());
 			}
@@ -99,14 +94,10 @@ public class UserService {
 				existingUser.setIsActive(updatedUser.getIsActive());
 			}
 
-			
-			
-
 			return userRepository.save(existingUser);
 		}).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 	}
 
-	
 	@Transactional
 	public void deactivateUser(Long id) {
 		userRepository.findById(id).ifPresent(user -> {
@@ -115,7 +106,6 @@ public class UserService {
 		});
 	}
 
-	
 	@Transactional
 	public void activateUser(Long id) {
 		userRepository.findById(id).ifPresent(user -> {
@@ -124,32 +114,26 @@ public class UserService {
 		});
 	}
 
-	
 	public List<User> getUsersByRole(UserRole role) {
 		return userRepository.findByRole(role);
 	}
 
-	
 	public List<User> getActiveUsers() {
 		return userRepository.findByIsActiveTrue();
 	}
 
-	
 	public List<User> searchUsersByName(String name) {
 		return userRepository.findByFullNameContainingIgnoreCase(name);
 	}
 
-	
 	public long countUsersByRole(UserRole role) {
 		return userRepository.countByRole(role);
 	}
 
-	
 	public List<User> getRecentlyRegisteredUsers() {
 		return userRepository.findTop10ByOrderByRegistrationDateDesc();
 	}
 
-	
 	@Transactional
 	public void changePassword(Long userId, String newPassword) {
 		userRepository.findById(userId).ifPresent(user -> {
@@ -160,42 +144,35 @@ public class UserService {
 
 	@Transactional
 	public String resetUserPassword(Long userId) {
-		
+
 		User currentAdmin = getCurrentUser();
 		if (currentAdmin.getRole() != UserRole.ADMIN) {
 			throw new RuntimeException("Только администраторы могут сбрасывать пароли");
 		}
 
-		
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-		
 		if (user.getId().equals(currentAdmin.getId())) {
 			throw new RuntimeException("Администратор не может сбросить свой собственный пароль");
 		}
 
-		
 		String tempPassword = generateTemporaryPassword();
 
-		
 		user.setPasswordHash(passwordEncoder.encode(tempPassword));
 		userRepository.save(user);
 
-		
 		if (userActivityLogService != null) {
 			try {
 				userActivityLogService.createLog(currentAdmin.getId(),
 						String.format("RESET_PASSWORD_FOR_USER_%d", userId));
 			} catch (Exception e) {
-				
+
 				System.err.println("Ошибка логирования сброса пароля: " + e.getMessage());
 			}
 		}
 
 		return tempPassword;
 	}
-
 
 	private String generateTemporaryPassword() {
 		String upperCaseLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -206,17 +183,14 @@ public class UserService {
 		StringBuilder password = new StringBuilder();
 		java.util.Random random = new java.util.Random();
 
-		
 		password.append(upperCaseLetters.charAt(random.nextInt(upperCaseLetters.length())));
 		password.append(lowerCaseLetters.charAt(random.nextInt(lowerCaseLetters.length())));
 		password.append(numbers.charAt(random.nextInt(numbers.length())));
 
-		
 		for (int i = 0; i < 5; i++) {
 			password.append(allChars.charAt(random.nextInt(allChars.length())));
 		}
 
-		
 		char[] passwordArray = password.toString().toCharArray();
 		for (int i = passwordArray.length - 1; i > 0; i--) {
 			int index = random.nextInt(i + 1);
@@ -228,15 +202,14 @@ public class UserService {
 		return new String(passwordArray);
 	}
 
-	
 	public boolean userExists(Long id) {
 		return userRepository.existsById(id);
 	}
 
-	
 	public boolean emailExists(String email) {
 		return userRepository.existsByEmail(email);
 	}
+
 	@Transactional
 	public User getCurrentUser() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -245,27 +218,23 @@ public class UserService {
 			throw new RuntimeException("Пользователь не аутентифицирован");
 		}
 
-		
 		Object principal = authentication.getPrincipal();
 
 		if (principal instanceof org.springframework.security.core.userdetails.UserDetails) {
-			
+
 			String email = ((org.springframework.security.core.userdetails.UserDetails) principal).getUsername();
-			return userRepository.findByEmail(email)
-					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+			return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 		} else if (principal instanceof String) {
-			
+
 			String email = (String) principal;
-			return userRepository.findByEmail(email)
-					.orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+			return userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 		} else if (principal instanceof User) {
-			
+
 			return (User) principal;
 		} else {
 			throw new RuntimeException("Неизвестный тип пользователя в SecurityContext");
 		}
 	}
-
 
 	@Transactional
 	public Optional<User> getCurrentUserOptional() {
@@ -275,9 +244,6 @@ public class UserService {
 			return Optional.empty();
 		}
 	}
-
-
-
 
 	public boolean isCurrentUserAdmin() {
 		try {
@@ -296,6 +262,7 @@ public class UserService {
 			return false;
 		}
 	}
+
 	@Transactional
 	public void setUserActive(Long userId, Boolean isActive) {
 		userRepository.findById(userId).ifPresent(user -> {
@@ -307,7 +274,7 @@ public class UserService {
 	@Transactional
 	public void changeUserRole(Long userId, UserRole newRole) {
 		userRepository.findById(userId).ifPresent(user -> {
-			
+
 			User currentUser = getCurrentUser();
 			if (currentUser.getId().equals(userId)) {
 				throw new RuntimeException("Нельзя изменить свою собственную роль");
@@ -317,6 +284,7 @@ public class UserService {
 			userRepository.save(user);
 		});
 	}
+
 	public long getTotalUsersCount() {
 		return userRepository.count();
 	}
