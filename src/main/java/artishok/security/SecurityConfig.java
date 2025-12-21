@@ -34,7 +34,7 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5500}")
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5500}")
     private String[] allowedOrigins;
 
     @Bean
