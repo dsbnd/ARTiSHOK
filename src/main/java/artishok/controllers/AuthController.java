@@ -389,6 +389,21 @@ public class AuthController {
 		user.setAvatarUrl(request.getAvatarUrl());
 		user.setRegistrationDate(LocalDateTime.now());
 		user.setIsActive(true);
+		
+		if (user.getEmail() == null || user.getFullName() == null || user.getRole() == null) {
+		    return ResponseEntity.badRequest().body(Map.of("error", "Обязательные поля не заполнены"));
+		}
+
+		// Устанавливаем дефолтные значения для nullable полей
+		if (user.getAvatarUrl() == null) {
+		    user.setAvatarUrl("");
+		}
+		if (user.getBio() == null) {
+		    user.setBio("");
+		}
+		if (user.getPhoneNumber() == null) {
+		    user.setPhoneNumber("");
+		}
 
 		userRepository.save(user);
 
