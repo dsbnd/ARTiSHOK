@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
@@ -851,6 +852,188 @@ public class GalleryOwnerController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 					.body(Map.of("error", "Ошибка отклонения бронирования: " + e.getMessage()));
+		}
+	}
+//	@PostMapping("/exhibitions/{id}/upload-map")
+//	@Operation(summary = "Загрузить изображение карты зала")
+//	public ResponseEntity<?> uploadHallMapImage(@PathVariable("id") Long id,
+//												@RequestParam("file") MultipartFile file) {
+//		try {
+//			User currentUser = userService.getCurrentUser();
+//
+//			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
+//			if (!exhibitionOpt.isPresent()) {
+//				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//						.body(Map.of("error", "Выставка не найдена"));
+//			}
+//
+//			ExhibitionEvent exhibition = exhibitionOpt.get();
+//			Long galleryId = exhibition.getGallery().getId();
+//
+//			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
+//				return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//						.body(Map.of("error", "Нет прав на загрузку карты"));
+//			}
+//
+//			// Сохраняем файл и получаем URL
+//			String imageUrl = fileStorageService.saveFile(file);
+//
+//			ExhibitionHallMap hallMap = new ExhibitionHallMap();
+//			hallMap.setExhibitionEvent(exhibition);
+//			hallMap.setName("План зала");
+//			hallMap.setMapImageUrl(imageUrl);
+//
+//			ExhibitionHallMap savedHallMap = exhibitionHallMapService.saveExhibitionHallMap(hallMap);
+//
+//			return ResponseEntity.ok(Map.of(
+//					"success", true,
+//					"message", "Карта зала загружена",
+//					"hallMap", convertHallMapToDTO(savedHallMap)
+//			));
+//		} catch (Exception e) {
+//			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+//					.body(Map.of("error", "Ошибка загрузки: " + e.getMessage()));
+//		}
+//	}
+
+	@PostMapping("/exhibitions/{id}/stand")
+	@Operation(summary = "Создать стенд с координатами")
+	public ResponseEntity<?> createStandWithCoordinates(@PathVariable("id") Long id,
+														@RequestBody Map<String, Object> standData) {
+		try {
+			User currentUser = userService.getCurrentUser();
+
+			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
+			if (!exhibitionOpt.isPresent()) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(Map.of("error", "Выставка не найдена"));
+			}
+
+			ExhibitionEvent exhibition = exhibitionOpt.get();
+			Long galleryId = exhibition.getGallery().getId();
+
+			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN)
+						.body(Map.of("error", "Нет прав на создание стенда"));
+			}
+
+			// Получаем карту зала выставки
+			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
+			if (hallMaps.isEmpty()) {
+				return ResponseEntity.badRequest()
+						.body(Map.of("error", "Сначала загрузите карту зала"));
+			}
+
+			ExhibitionHallMap hallMap = hallMaps.get(0);
+
+			ExhibitionStand stand = new ExhibitionStand();
+			stand.setExhibitionHallMap(hallMap);
+			stand.setStandNumber(standData.get("standNumber").toString());
+			stand.setPositionX(Integer.parseInt(standData.get("positionX").toString()));
+			stand.setPositionY(Integer.parseInt(standData.get("positionY").toString()));
+			stand.setWidth(Integer.parseInt(standData.get("width").toString()));
+			stand.setHeight(Integer.parseInt(standData.get("height").toString()));
+			stand.setType(StandType.valueOf(standData.get("type").toString()));
+			stand.setStatus(StandStatus.AVAILABLE);
+
+			ExhibitionStand savedStand = exhibitionStandService.saveExhibitionStand(stand);
+
+			return ResponseEntity.ok(Map.of(
+					"success", true,
+					"message", "Стенд создан",
+					"stand", convertStandToDTO(savedStand)
+			));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "Ошибка создания стенда: " + e.getMessage()));
+		}
+	}
+
+	@PutMapping("/stands/{id}")
+	@Operation(summary = "Обновить стенд")
+	public ResponseEntity<?> updateStand(@PathVariable("id") Long id,
+										 @RequestBody Map<String, Object> updates) {
+		try {
+			User currentUser = userService.getCurrentUser();
+
+			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(id);
+			if (!standOpt.isPresent()) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(Map.of("error", "Стенд не найден"));
+			}
+
+			ExhibitionStand stand = standOpt.get();
+			Long galleryId = stand.getExhibitionHallMap().getExhibitionEvent().getGallery().getId();
+
+			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN)
+						.body(Map.of("error", "Нет прав на изменение стенда"));
+			}
+
+			if (updates.containsKey("positionX")) {
+				stand.setPositionX(Integer.parseInt(updates.get("positionX").toString()));
+			}
+			if (updates.containsKey("positionY")) {
+				stand.setPositionY(Integer.parseInt(updates.get("positionY").toString()));
+			}
+			if (updates.containsKey("width")) {
+				stand.setWidth(Integer.parseInt(updates.get("width").toString()));
+			}
+			if (updates.containsKey("height")) {
+				stand.setHeight(Integer.parseInt(updates.get("height").toString()));
+			}
+			if (updates.containsKey("standNumber")) {
+				stand.setStandNumber(updates.get("standNumber").toString());
+			}
+			if (updates.containsKey("type")) {
+				stand.setType(StandType.valueOf(updates.get("type").toString()));
+			}
+			if (updates.containsKey("status")) {
+				stand.setStatus(StandStatus.valueOf(updates.get("status").toString()));
+			}
+
+			ExhibitionStand updatedStand = exhibitionStandService.saveExhibitionStand(stand);
+
+			return ResponseEntity.ok(Map.of(
+					"success", true,
+					"message", "Стенд обновлен",
+					"stand", convertStandToDTO(updatedStand)
+			));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "Ошибка обновления стенда: " + e.getMessage()));
+		}
+	}
+
+	@DeleteMapping("/stands/{id}")
+	@Operation(summary = "Удалить стенд")
+	public ResponseEntity<?> deleteStand(@PathVariable("id") Long id) {
+		try {
+			User currentUser = userService.getCurrentUser();
+
+			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(id);
+			if (!standOpt.isPresent()) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(Map.of("error", "Стенд не найден"));
+			}
+
+			ExhibitionStand stand = standOpt.get();
+			Long galleryId = stand.getExhibitionHallMap().getExhibitionEvent().getGallery().getId();
+
+			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN)
+						.body(Map.of("error", "Нет прав на удаление стенда"));
+			}
+
+			exhibitionStandService.deleteExhibitionStand(id);
+
+			return ResponseEntity.ok(Map.of(
+					"success", true,
+					"message", "Стенд удален"
+			));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("error", "Ошибка удаления стенда: " + e.getMessage()));
 		}
 	}
 
