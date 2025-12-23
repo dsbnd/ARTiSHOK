@@ -84,7 +84,9 @@ public class GalleryService {
 		gallery.setContactEmail(galleryData.containsKey("contactEmail") ? galleryData.get("contactEmail").toString()
 				: owner.getEmail());
 		gallery.setLogoUrl(galleryData.containsKey("logoUrl") ? galleryData.get("logoUrl").toString() : null);
-
+		gallery.setOwner(owner);
+        gallery.setStatus(GalleryStatus.PENDING); // Устанавливаем enum напрямую
+        gallery.setCreatedAt(LocalDateTime.now());
 		gallery.setAdminComment(null);
 
 		Gallery savedGallery = galleryRepository.save(gallery);

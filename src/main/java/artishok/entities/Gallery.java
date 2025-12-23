@@ -7,6 +7,10 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import artishok.entities.enums.BookingStatus;
 import artishok.entities.enums.GalleryStatus;
 
 @Entity
@@ -33,6 +37,7 @@ public class Gallery {
 
 	@Column(name = "logo_url")
 	private String logoUrl;
+	
 	@Transient
 	private User owner;
 	@Transient
@@ -126,9 +131,9 @@ public class Gallery {
 		this.adminComment = adminComment;
 	}
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private GalleryStatus status = GalleryStatus.PENDING;
+	@Column(name = "status")
+	@JdbcTypeCode(SqlTypes.NAMED_ENUM)
+	private GalleryStatus status;
 
 	@Column(name = "admin_comment")
 	private String adminComment;

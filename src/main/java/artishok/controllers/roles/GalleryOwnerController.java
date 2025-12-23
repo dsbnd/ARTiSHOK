@@ -42,8 +42,9 @@ public class GalleryOwnerController {
 
 	@GetMapping("/galleries")
 	@Operation(summary = "Получить мои галереи")
-	public ResponseEntity<?> getMyGalleries(@RequestParam(value="status", required = false) String status,
-			@RequestParam(value="page", defaultValue = "0") int page, @RequestParam(value="size", defaultValue = "10") int size) {
+	public ResponseEntity<?> getMyGalleries(@RequestParam(value = "status", required = false) String status,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "10") int size) {
 
 		try {
 			User currentUser = userService.getCurrentUser();
@@ -120,9 +121,10 @@ public class GalleryOwnerController {
 
 	@GetMapping("/exhibitions")
 	@Operation(summary = "Получить мои выставки")
-	public ResponseEntity<?> getMyExhibitions(@RequestParam(value="galleryId", required = false) Long galleryId,
-			@RequestParam(value="status", required = false) String status, @RequestParam(value="page", defaultValue = "0") int page,
-			@RequestParam(value="size", defaultValue = "10") int size) {
+	public ResponseEntity<?> getMyExhibitions(@RequestParam(value = "galleryId", required = false) Long galleryId,
+			@RequestParam(value = "status", required = false) String status,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "10") int size) {
 
 		try {
 			User currentUser = userService.getCurrentUser();
@@ -239,7 +241,7 @@ public class GalleryOwnerController {
 			exhibition.setStatus(ExhibitionStatus.DRAFT);
 
 			ExhibitionEvent savedExhibition = exhibitionEventService.saveExhibitionEvent(exhibition);
-
+			
 			return ResponseEntity.ok(Map.of("success", true, "message", "Выставка создана (статус: DRAFT)",
 					"exhibition", convertExhibitionToDTO(savedExhibition)));
 		} catch (Exception e) {
@@ -375,7 +377,8 @@ public class GalleryOwnerController {
 
 	@PostMapping("/exhibitions/{id}/stands")
 	@Operation(summary = "Добавить новый стенд на выставку")
-	public ResponseEntity<?> addExhibitionStand(@PathVariable("id") Long id, @RequestBody Map<String, Object> standData) {
+	public ResponseEntity<?> addExhibitionStand(@PathVariable("id") Long id,
+			@RequestBody Map<String, Object> standData) {
 		try {
 			User currentUser = userService.getCurrentUser();
 
@@ -468,7 +471,8 @@ public class GalleryOwnerController {
 
 	@PutMapping("/stands/{standId}/status")
 	@Operation(summary = "Изменить статус стенда (AVAILABLE/BOOKED)")
-	public ResponseEntity<?> changeStandStatus(@PathVariable("standId") Long standId, @RequestBody Map<String, String> request) {
+	public ResponseEntity<?> changeStandStatus(@PathVariable("standId") Long standId,
+			@RequestBody Map<String, String> request) {
 		try {
 			User currentUser = userService.getCurrentUser();
 
@@ -697,9 +701,10 @@ public class GalleryOwnerController {
 
 	@GetMapping("/bookings")
 	@Operation(summary = "Получить все бронирования для моих галерей")
-	public ResponseEntity<?> getGalleryBookings(@RequestParam(value="status", required = false) String status,
-			@RequestParam(value="exhibitionId", required = false) Long exhibitionId, @RequestParam(value="page", defaultValue = "0") int page,
-			@RequestParam(value="size", defaultValue = "20") int size) {
+	public ResponseEntity<?> getGalleryBookings(@RequestParam(value = "status", required = false) String status,
+			@RequestParam(value = "exhibitionId", required = false) Long exhibitionId,
+			@RequestParam(value = "page", defaultValue = "0") int page,
+			@RequestParam(value = "size", defaultValue = "20") int size) {
 		try {
 			User currentUser = userService.getCurrentUser();
 
@@ -899,29 +904,26 @@ public class GalleryOwnerController {
 	@PostMapping("/exhibitions/{id}/stand")
 	@Operation(summary = "Создать стенд с координатами")
 	public ResponseEntity<?> createStandWithCoordinates(@PathVariable("id") Long id,
-														@RequestBody Map<String, Object> standData) {
+			@RequestBody Map<String, Object> standData) {
 		try {
 			User currentUser = userService.getCurrentUser();
 
 			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
 			if (!exhibitionOpt.isPresent()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(Map.of("error", "Выставка не найдена"));
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Выставка не найдена"));
 			}
 
 			ExhibitionEvent exhibition = exhibitionOpt.get();
 			Long galleryId = exhibition.getGallery().getId();
 
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN)
-						.body(Map.of("error", "Нет прав на создание стенда"));
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Нет прав на создание стенда"));
 			}
 
 			// Получаем карту зала выставки
 			List<ExhibitionHallMap> hallMaps = exhibitionHallMapService.getExhibitionHallMapsByEventId(id);
 			if (hallMaps.isEmpty()) {
-				return ResponseEntity.badRequest()
-						.body(Map.of("error", "Сначала загрузите карту зала"));
+				return ResponseEntity.badRequest().body(Map.of("error", "Сначала загрузите карту зала"));
 			}
 
 			ExhibitionHallMap hallMap = hallMaps.get(0);
@@ -938,11 +940,8 @@ public class GalleryOwnerController {
 
 			ExhibitionStand savedStand = exhibitionStandService.saveExhibitionStand(stand);
 
-			return ResponseEntity.ok(Map.of(
-					"success", true,
-					"message", "Стенд создан",
-					"stand", convertStandToDTO(savedStand)
-			));
+			return ResponseEntity
+					.ok(Map.of("success", true, "message", "Стенд создан", "stand", convertStandToDTO(savedStand)));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 					.body(Map.of("error", "Ошибка создания стенда: " + e.getMessage()));
@@ -951,15 +950,13 @@ public class GalleryOwnerController {
 
 	@PutMapping("/stands/{id}")
 	@Operation(summary = "Обновить стенд")
-	public ResponseEntity<?> updateStand(@PathVariable("id") Long id,
-										 @RequestBody Map<String, Object> updates) {
+	public ResponseEntity<?> updateStand(@PathVariable("id") Long id, @RequestBody Map<String, Object> updates) {
 		try {
 			User currentUser = userService.getCurrentUser();
 
 			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(id);
 			if (!standOpt.isPresent()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(Map.of("error", "Стенд не найден"));
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Стенд не найден"));
 			}
 
 			ExhibitionStand stand = standOpt.get();
@@ -994,11 +991,8 @@ public class GalleryOwnerController {
 
 			ExhibitionStand updatedStand = exhibitionStandService.saveExhibitionStand(stand);
 
-			return ResponseEntity.ok(Map.of(
-					"success", true,
-					"message", "Стенд обновлен",
-					"stand", convertStandToDTO(updatedStand)
-			));
+			return ResponseEntity
+					.ok(Map.of("success", true, "message", "Стенд обновлен", "stand", convertStandToDTO(updatedStand)));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 					.body(Map.of("error", "Ошибка обновления стенда: " + e.getMessage()));
@@ -1013,24 +1007,19 @@ public class GalleryOwnerController {
 
 			Optional<ExhibitionStand> standOpt = exhibitionStandService.getExhibitionStandById(id);
 			if (!standOpt.isPresent()) {
-				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-						.body(Map.of("error", "Стенд не найден"));
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Стенд не найден"));
 			}
 
 			ExhibitionStand stand = standOpt.get();
 			Long galleryId = stand.getExhibitionHallMap().getExhibitionEvent().getGallery().getId();
 
 			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN)
-						.body(Map.of("error", "Нет прав на удаление стенда"));
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Нет прав на удаление стенда"));
 			}
 
 			exhibitionStandService.deleteExhibitionStand(id);
 
-			return ResponseEntity.ok(Map.of(
-					"success", true,
-					"message", "Стенд удален"
-			));
+			return ResponseEntity.ok(Map.of("success", true, "message", "Стенд удален"));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 					.body(Map.of("error", "Ошибка удаления стенда: " + e.getMessage()));
@@ -1086,7 +1075,7 @@ public class GalleryOwnerController {
 
 	@GetMapping("/statistics")
 	@Operation(summary = "Получить статистику по моим галереям")
-	public ResponseEntity<?> getStatistics(@RequestParam(required = false) Long galleryId) {
+	public ResponseEntity<?> getStatistics(@RequestParam(value="galleryId", required = false) Long galleryId) {
 
 		try {
 			User currentUser = userService.getCurrentUser();

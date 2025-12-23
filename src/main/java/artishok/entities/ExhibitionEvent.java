@@ -7,6 +7,10 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import artishok.entities.enums.ExhibitionStatus;
@@ -91,8 +95,8 @@ public class ExhibitionEvent {
 	@Column(name = "end_date", nullable = false)
     private LocalDateTime endDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+	@Column(name = "status")
+	@JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ExhibitionStatus status = ExhibitionStatus.DRAFT;
 
 
