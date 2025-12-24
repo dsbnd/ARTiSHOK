@@ -238,7 +238,7 @@ public class GalleryOwnerController {
 			exhibition.setGallery(gallery);
 			exhibition.setStartDate(startDate);
 			exhibition.setEndDate(endDate);
-			exhibition.setStatus(ExhibitionStatus.DRAFT);
+			exhibition.setStatus(ExhibitionStatus.ACTIVE);
 
 			ExhibitionEvent savedExhibition = exhibitionEventService.saveExhibitionEvent(exhibition);
 			

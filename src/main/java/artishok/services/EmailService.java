@@ -24,8 +24,11 @@ public class EmailService {
     
     public void sendVerificationEmail(String toEmail, String verificationToken, String userName) {
         String subject = "Подтверждение email для сервиса АРТиШОК";
-        String verificationUrl = baseUrl + "/api/auth/verify-email?token=" + verificationToken;
-        
+        //String verificationUrl = baseUrl + "/api/auth/verify-email?token=" + verificationToken;
+        //String verificationUrl = "http://localhost:5173" + "/login";
+        String verificationUrl = baseUrl + "/api/auth/verify-email?token=" + 
+                verificationToken + 
+                "&redirectTo=http://localhost:5173/login";
         String htmlContent = createVerificationEmailHtml(userName, verificationUrl);
         
         try {

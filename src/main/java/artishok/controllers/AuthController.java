@@ -27,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -115,31 +116,55 @@ public class AuthController {
 	@Operation(summary = "Подтверждение email", description = "Подтверждение email по токену")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Email успешно подтвержден"),
 			@ApiResponse(responseCode = "400", description = "Неверный или просроченный токен") })
-	public ResponseEntity<?> verifyEmail(
-			@Parameter(description = "Токен верификации", required = true) @RequestParam("token") String token) {
+	public ResponseEntity<?> verifyEmail(@RequestParam("token") String token, HttpServletResponse response) throws IOException {
 
 		boolean verified = emailVerificationService.verifyEmail(token);
 
 		if (verified) {
 			try {
-
 				User user = emailVerificationService.getUserByTokenAfterVerification(token);
 				String authToken = jwtTokenUtil.generateToken(user);
 
-				return ResponseEntity.ok(Map.of("success", true, "message",
-						"Email успешно подтвержден. Теперь вы можете войти в систему.", "token", authToken, "user",
-						Map.of("id", user.getId(), "email", user.getEmail(), "fullName", user.getFullName(), "role",
-								user.getRole())));
-			} catch (Exception e) {
+				String frontendUrl = "http://localhost:5173/login?" + "verified=true&" + "token=" + authToken + "&"
+						+ "userId=" + user.getId() + "&" + "email=" + user.getEmail();
 
-				return ResponseEntity.ok(Map.of("success", true, "message",
-						"Email успешно подтвержден. Пожалуйста, войдите в систему."));
+				response.sendRedirect(frontendUrl);
+				return null;
+
+			} catch (Exception e) {
+				response.sendRedirect("http://localhost:5173/login?verified=true");
+				return null;
 			}
 		} else {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-					.body(Map.of("success", false, "message", "Неверный или просроченный токен верификации."));
+			response.sendRedirect("http://localhost:5173/login?verified=false");
+			return null;
 		}
 	}
+	// public ResponseEntity<?> verifyEmail(
+//			@Parameter(description = "Токен верификации", required = true) @RequestParam("token") String token) {
+//
+//		boolean verified = emailVerificationService.verifyEmail(token);
+//
+//		if (verified) {
+//			try {
+//
+//				User user = emailVerificationService.getUserByTokenAfterVerification(token);
+//				String authToken = jwtTokenUtil.generateToken(user);
+//
+//				return ResponseEntity.ok(Map.of("success", true, "message",
+//						"Email успешно подтвержден. Теперь вы можете войти в систему.", "token", authToken, "user",
+//						Map.of("id", user.getId(), "email", user.getEmail(), "fullName", user.getFullName(), "role",
+//								user.getRole())));
+//			} catch (Exception e) {
+//
+//				return ResponseEntity.ok(Map.of("success", true, "message",
+//						"Email успешно подтвержден. Пожалуйста, войдите в систему."));
+//			}
+//		} else {
+//			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+//					.body(Map.of("success", false, "message", "Неверный или просроченный токен верификации."));
+//		}
+//	}
 
 	@Operation(summary = "Повторная отправка письма верификации", description = "Отправка нового письма для подтверждения email")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Письмо отправлено"),
@@ -188,55 +213,40 @@ public class AuthController {
 	}
 
 	@PostMapping("/logout")
-	public ResponseEntity<?> logout(
-	        @RequestHeader("Authorization") String authHeader,
-	        HttpServletRequest request, 
-	        HttpServletResponse response) {
-	    
-	    try {
-	        String token = authHeader.substring(7);
-	        
-	        tokenBlacklistService.blacklistToken(token);
-	        
-	        new SecurityContextLogoutHandler().logout(request, response, 
-	            SecurityContextHolder.getContext().getAuthentication());
-	        
-	        SecurityContextHolder.clearContext();
-	        
-	        return ResponseEntity.ok(Map.of(
-	            "success", true,
-	            "message", "Выход выполнен успешно.",
-	            "clearToken", true 
-	        ));
-	    } catch (Exception e) {
-	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-	            .body(Map.of("success", false, "error", "Ошибка при выходе"));
-	    }
+	public ResponseEntity<?> logout(@RequestHeader("Authorization") String authHeader, HttpServletRequest request,
+			HttpServletResponse response) {
+
+		try {
+			String token = authHeader.substring(7);
+
+			tokenBlacklistService.blacklistToken(token);
+
+			new SecurityContextLogoutHandler().logout(request, response,
+					SecurityContextHolder.getContext().getAuthentication());
+
+			SecurityContextHolder.clearContext();
+
+			return ResponseEntity.ok(Map.of("success", true, "message", "Выход выполнен успешно.", "clearToken", true));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(Map.of("success", false, "error", "Ошибка при выходе"));
+		}
 	}
-	
+
 	@GetMapping("/check-token-status")
 	public ResponseEntity<?> checkTokenStatus(
-	        @RequestHeader(value = "Authorization", required = false) String authHeader) {
-	    
-	    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-	        return ResponseEntity.ok(Map.of(
-	            "hasToken", false,
-	            "message", "Токен не предоставлен"
-	        ));
-	    }
-	    
-	    String token = authHeader.substring(7);
-	    boolean isBlacklisted = tokenBlacklistService.isTokenBlacklisted(token);
-	    
-	    return ResponseEntity.ok(Map.of(
-	        "hasToken", true,
-	        "blacklisted", isBlacklisted,
-	        "tokenValid", !isBlacklisted,
-	        "tokenPreview", token.substring(0, Math.min(20, token.length())) + "...",
-	        "message", isBlacklisted ? 
-	            "Токен недействителен (в черном списке)" : 
-	            "Токен действителен"
-	    ));
+			@RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+			return ResponseEntity.ok(Map.of("hasToken", false, "message", "Токен не предоставлен"));
+		}
+
+		String token = authHeader.substring(7);
+		boolean isBlacklisted = tokenBlacklistService.isTokenBlacklisted(token);
+
+		return ResponseEntity.ok(Map.of("hasToken", true, "blacklisted", isBlacklisted, "tokenValid", !isBlacklisted,
+				"tokenPreview", token.substring(0, Math.min(20, token.length())) + "...", "message",
+				isBlacklisted ? "Токен недействителен (в черном списке)" : "Токен действителен"));
 	}
 
 	@Data
@@ -389,20 +399,20 @@ public class AuthController {
 		user.setAvatarUrl(request.getAvatarUrl());
 		user.setRegistrationDate(LocalDateTime.now());
 		user.setIsActive(true);
-		
+
 		if (user.getEmail() == null || user.getFullName() == null || user.getRole() == null) {
-		    return ResponseEntity.badRequest().body(Map.of("error", "Обязательные поля не заполнены"));
+			return ResponseEntity.badRequest().body(Map.of("error", "Обязательные поля не заполнены"));
 		}
 
 		// Устанавливаем дефолтные значения для nullable полей
 		if (user.getAvatarUrl() == null) {
-		    user.setAvatarUrl("");
+			user.setAvatarUrl("");
 		}
 		if (user.getBio() == null) {
-		    user.setBio("");
+			user.setBio("");
 		}
 		if (user.getPhoneNumber() == null) {
-		    user.setPhoneNumber("");
+			user.setPhoneNumber("");
 		}
 
 		userRepository.save(user);
