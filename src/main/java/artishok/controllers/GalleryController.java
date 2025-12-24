@@ -1,11 +1,15 @@
 package artishok.controllers;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import artishok.entities.Gallery;
-import artishok.services.GalleryService;
+import artishok.repositories.*;
+import artishok.services.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
@@ -13,9 +17,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RequestMapping("/galleries")
 public class GalleryController {
     private final GalleryService galleryService;
+    private final ImageService imageService;
+    private final GalleryRepository galleryRepository;
 
-    public GalleryController(GalleryService galleryService) {
+    public GalleryController(GalleryService galleryService, ImageService imageService, GalleryRepository galleryRepository) {
         this.galleryService = galleryService;
+        this.imageService = imageService;
+        this.galleryRepository = galleryRepository;
     }
 
     @GetMapping
@@ -67,5 +75,62 @@ public class GalleryController {
     public ResponseEntity<Void> deleteGallery(@PathVariable Long id) {
         galleryService.deleteGallery(id);
         return ResponseEntity.ok().build();
+    }
+    
+    @PostMapping("/{id}/logo")
+    public ResponseEntity<?> uploadLogo(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        
+        try {
+            Gallery gallery = galleryRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Gallery not found"));
+            
+            // Удаляем старый логотип
+            if (gallery.getLogoUrl() != null) {
+                imageService.deleteImage(gallery.getLogoUrl());
+            }
+            
+            String logoUrl = imageService.uploadImage(file, "gallery", id);
+            gallery.setLogoUrl(logoUrl);
+            galleryRepository.save(gallery);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "logoUrl", logoUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // Создание галереи с логотипом
+    @PostMapping("/create-with-logo")
+    public ResponseEntity<?> createGalleryWithLogo(
+            @RequestParam("name") String name,
+            @RequestParam("address") String address,
+            @RequestParam("contactEmail") String contactEmail,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
+        
+        try {
+            Gallery gallery = new Gallery();
+            gallery.setName(name);
+            gallery.setAddress(address);
+            gallery.setContactEmail(contactEmail);
+            
+            Gallery savedGallery = galleryRepository.save(gallery);
+            
+            if (file != null && !file.isEmpty()) {
+                String logoUrl = imageService.uploadImage(file, "gallery", savedGallery.getId());
+                savedGallery.setLogoUrl(logoUrl);
+                galleryRepository.save(savedGallery);
+            }
+            
+            return ResponseEntity.ok(savedGallery);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

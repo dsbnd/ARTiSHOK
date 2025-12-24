@@ -7,11 +7,13 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import artishok.entities.Artwork;
 import artishok.entities.Booking;
 import artishok.entities.enums.ArtworkStatus;
-import artishok.services.ArtworkService;
+import artishok.services.*;
+import artishok.repositories.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -19,10 +21,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @RestController
 @RequestMapping("/artworks")
 public class ArtworkController {
-	private final ArtworkService artworkService;
 
-	ArtworkController(ArtworkService artworkService) {
+    private final ArtworkRepository artworkRepository;
+	private final ArtworkService artworkService;
+	private final ImageService imageService;
+
+	ArtworkController(ArtworkService artworkService, ImageService imageService, ArtworkRepository artworkRepository) {
 		this.artworkService = artworkService;
+		this.imageService = imageService;
+		this.artworkRepository = artworkRepository;
+		
 	}
 
 	@Operation(summary = "Создание нового произведения", description = "Добавление произведения к подтвержденному бронированию")
@@ -212,5 +220,91 @@ public class ArtworkController {
 		List<Artwork> artworks = artworkService.getPublishedArtworksByGallery(galleryId);
 		return ResponseEntity.ok(artworks);
 	}
+	
+	@PostMapping("/{id}/image")
+    public ResponseEntity<?> uploadImageToArtwork(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        
+        try {
+            Artwork artwork = artworkRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Artwork not found"));
+            
+            String imageUrl = imageService.uploadImage(file, "artwork", id);
+            artwork.setImageUrl(imageUrl);
+            artworkRepository.save(artwork);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Image uploaded",
+                "imageUrl", imageUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+    
+    // 2. Создание artwork + изображение одним запросом
+    @PostMapping("/create-with-image")
+    public ResponseEntity<?> createArtworkWithImage(
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam("bookingId") Long bookingId) {
+        
+        try {
+            // Сначала создаем artwork
+            Artwork artwork = new Artwork();
+            artwork.setTitle(title);
+            artwork.setDescription(description);
+            // booking нужно достать из репозитория
+            // artwork.setBooking(bookingRepository.findById(bookingId).orElseThrow());
+            
+            Artwork savedArtwork = artworkRepository.save(artwork);
+            
+            // Если есть файл - загружаем
+            if (file != null && !file.isEmpty()) {
+                String imageUrl = imageService.uploadImage(file, "artwork", savedArtwork.getId());
+                savedArtwork.setImageUrl(imageUrl);
+                artworkRepository.save(savedArtwork);
+            }
+            
+            return ResponseEntity.ok(savedArtwork);
+            
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // 3. Обновление изображения
+    @PutMapping("/{id}/image")
+    public ResponseEntity<?> updateArtworkImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+        
+        try {
+            Artwork artwork = artworkRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Artwork not found"));
+            
+            // Удаляем старое изображение
+            if (artwork.getImageUrl() != null) {
+                imageService.deleteImage(artwork.getImageUrl());
+            }
+            
+            String newImageUrl = imageService.uploadImage(file, "artwork", id);
+            artwork.setImageUrl(newImageUrl);
+            artworkRepository.save(artwork);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imageUrl", newImageUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
 
 }

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.web.webauthn.api.CredentialPropertiesOutput;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,6 +30,8 @@ import java.util.stream.Collectors;
 public class GalleryOwnerController {
 	@Autowired
 	private UserService userService;
+	@Autowired
+	private ImageService imageService;
 	@Autowired
 	private GalleryService galleryService;
 	@Autowired
@@ -74,49 +77,108 @@ public class GalleryOwnerController {
 
 	@PostMapping("/create-gallery")
 	@Operation(summary = "Создать новую галерею")
-	public ResponseEntity<?> createGallery(@RequestBody Map<String, Object> galleryData) {
-		try {
-			User currentUser = userService.getCurrentUser();
+	public ResponseEntity<?> createGallery(
+	        @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
+	        @RequestParam("name") String name,
+	        @RequestParam(value = "description", required = false) String description,
+	        @RequestParam("address") String address,
+	        @RequestParam(value = "contactPhone", required = false) String contactPhone,
+	        @RequestParam("contactEmail") String contactEmail,
+	        @RequestParam(value = "logoUrl", required = false) String logoUrl) {
+	    
+	    try {
+	        User currentUser = userService.getCurrentUser();
 
-			if (!galleryData.containsKey("name") || !galleryData.containsKey("address")) {
-				return ResponseEntity.badRequest().body(Map.of("error", "Поля name и address обязательны"));
-			}
+	        // Создаем Map с данными галереи
+	        Map<String, Object> galleryData = new HashMap<>();
+	        galleryData.put("name", name);
+	        galleryData.put("description", description);
+	        galleryData.put("address", address);
+	        galleryData.put("contactPhone", contactPhone);
+	        galleryData.put("contactEmail", contactEmail);
+	        
+	        // Обрабатываем логотип: сначала пробуем загрузить файл, если есть
+	        String finalLogoUrl = logoUrl;
+	        if (logoFile != null && !logoFile.isEmpty()) {
+	            try {
+	                // Загружаем изображение в MinIO
+	                String uploadedLogoUrl = imageService.uploadImage(logoFile, "gallery", null);
+	                finalLogoUrl = uploadedLogoUrl;
+	            } catch (Exception e) {
+	            	 System.out.println("Ошибка загрузки логотипа");
+	                // Можно продолжить без логотипа или вернуть ошибку
+	                // return ResponseEntity.badRequest().body(Map.of("error", "Ошибка загрузки логотипа: " + e.getMessage()));
+	            }
+	        }
+	        
+	        // Добавляем URL логотипа в данные
+	        galleryData.put("logoUrl", finalLogoUrl);
 
-			if (!galleryData.containsKey("contactEmail")) {
-				galleryData.put("contactEmail", currentUser.getEmail());
-			}
+	        Map<String, Object> createdGallery = galleryService.createGalleryWithOwner(currentUser.getId(),
+	                galleryData);
 
-			Map<String, Object> createdGallery = galleryService.createGalleryWithOwner(currentUser.getId(),
-					galleryData);
-
-			return ResponseEntity.ok(Map.of("success", true, "message",
-					"Заявка на создание галереи отправлена на модерацию", "gallery", createdGallery));
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-					.body(Map.of("error", "Ошибка создания галереи: " + e.getMessage()));
-		}
+	        return ResponseEntity.ok(Map.of("success", true, "message",
+	                "Заявка на создание галереи отправлена на модерацию", "gallery", createdGallery));
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+	                .body(Map.of("error", "Ошибка создания галереи: " + e.getMessage()));
+	    }
 	}
-
+	
 	@PutMapping("/galleries/{id}")
 	@Operation(summary = "Обновить информацию о галерее")
-	public ResponseEntity<?> updateGallery(@PathVariable("id") Long id, @RequestBody Map<String, Object> updates) {
+	public ResponseEntity<?> updateGallery(
+	        @PathVariable("id") Long id,
+	        @RequestParam(value = "logoFile", required = false) MultipartFile logoFile,
+	        @RequestParam("name") String name,
+	        @RequestParam(value = "description", required = false) String description,
+	        @RequestParam("address") String address,
+	        @RequestParam(value = "contactPhone", required = false) String contactPhone,
+	        @RequestParam("contactEmail") String contactEmail,
+	        @RequestParam(value = "logoUrl", required = false) String logoUrl) {
+	    
+	    try {
+	        User currentUser = userService.getCurrentUser();
 
-		try {
-			User currentUser = userService.getCurrentUser();
+	        if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), id)) {
+	            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+	                    .body(Map.of("error", "Нет прав на обновление этой галереи"));
+	        }
 
-			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), id)) {
-				return ResponseEntity.status(HttpStatus.FORBIDDEN)
-						.body(Map.of("error", "Нет прав на обновление этой галереи"));
-			}
+	        // Создаем Map с обновленными данными
+	        Map<String, Object> updates = new HashMap<>();
+	        updates.put("name", name);
+	        updates.put("description", description);
+	        updates.put("address", address);
+	        updates.put("contactPhone", contactPhone);
+	        updates.put("contactEmail", contactEmail);
+	        
+	        // Обрабатываем логотип
+	        String finalLogoUrl = logoUrl;
+	        if (logoFile != null && !logoFile.isEmpty()) {
+	            try {
+	                // Загружаем изображение в MinIO
+	                String uploadedLogoUrl = imageService.uploadImage(logoFile, "gallery", id);
+	                finalLogoUrl = uploadedLogoUrl;
+	            } catch (Exception e) {
+	                System.out.println("Ошибка загрузки логотипа");
+	                // Можно продолжить без обновления логотипа
+	            }
+	        }
+	        
+	        // Добавляем URL логотипа в обновления
+	        if (finalLogoUrl != null) {
+	            updates.put("logoUrl", finalLogoUrl);
+	        }
 
-			Map<String, Object> updatedGallery = galleryService.updateGallery(id, updates);
+	        Map<String, Object> updatedGallery = galleryService.updateGallery(id, updates);
 
-			return ResponseEntity.ok(Map.of("success", true, "message",
-					"Информация о галерее обновлена и отправлена на модерацию", "gallery", updatedGallery));
-		} catch (Exception e) {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-					.body(Map.of("error", "Ошибка обновления галереи: " + e.getMessage()));
-		}
+	        return ResponseEntity.ok(Map.of("success", true, "message",
+	                "Информация о галерее обновлена и отправлена на модерацию", "gallery", updatedGallery));
+	    } catch (Exception e) {
+	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+	                .body(Map.of("error", "Ошибка обновления галереи: " + e.getMessage()));
+	    }
 	}
 
 	@GetMapping("/exhibitions")

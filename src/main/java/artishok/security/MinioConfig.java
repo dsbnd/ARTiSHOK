@@ -33,7 +33,6 @@ public class MinioConfig {
         }
     }
     
-    // Просто возвращаем bucketName как bean
     @Bean
     public String bucketName() {
         return bucketName;

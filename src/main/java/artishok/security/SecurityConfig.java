@@ -49,6 +49,9 @@ public class SecurityConfig {
 
                         .requestMatchers("/api/auth/**", // Регистрация и вход
                                 "/api/public/**", // Публичные данные
+                                "/api/images/test",  // Разрешаем тестовый endpoint
+                                "/api/files/**",     // Разрешаем доступ к файлам
+                                "/api/images/upload",
                                 "/swagger-ui/**", // Swagger UI
                                 "/v3/api-docs/**", // Swagger документация
                                 "/swagger-resources/**", "/webjars/**", "/error")

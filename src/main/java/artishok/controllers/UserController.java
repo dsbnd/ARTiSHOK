@@ -11,11 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import artishok.entities.User;
 import artishok.entities.enums.UserRole;
-import artishok.services.UserService;
+import artishok.repositories.UserRepository;
+import artishok.services.*;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -26,10 +30,15 @@ import jakarta.validation.Valid;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Пользователь", description = "Общие методы для всех аутентифицированных пользователей")
 public class UserController {
-	private final UserService userService;
 
-	UserController(UserService userService) {
+    private final UserRepository userRepository;
+	private final UserService userService;
+	private final ImageService imageService;
+
+	UserController(UserService userService, UserRepository userRepository, ImageService imageService) {
 		this.userService = userService;
+		this.userRepository = userRepository;
+		this.imageService = imageService;
 	}
 
 	@PostMapping
@@ -281,5 +290,62 @@ public class UserController {
 					.body(Map.of("error", e.getMessage()));
 		}
 	}
+	
+	@PostMapping("/me/avatar")
+    public ResponseEntity<?> uploadMyAvatar(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam("file") MultipartFile file) {
+        
+        try {
+            String email = userDetails.getUsername();
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            // Удаляем старый аватар
+            if (user.getAvatarUrl() != null) {
+                imageService.deleteImage(user.getAvatarUrl());
+            }
+            
+            String avatarUrl = imageService.uploadImage(file, "avatar", user.getId());
+            user.setAvatarUrl(avatarUrl);
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "avatarUrl", avatarUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // Для админов - загрузка аватара для любого пользователя
+    @PostMapping("/{userId}/avatar")
+    public ResponseEntity<?> uploadAvatarForUser(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file) {
+        
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            if (user.getAvatarUrl() != null) {
+                imageService.deleteImage(user.getAvatarUrl());
+            }
+            
+            String avatarUrl = imageService.uploadImage(file, "avatar", userId);
+            user.setAvatarUrl(avatarUrl);
+            userRepository.save(user);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "avatarUrl", avatarUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
 
 }

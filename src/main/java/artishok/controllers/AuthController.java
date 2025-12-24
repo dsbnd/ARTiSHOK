@@ -4,8 +4,7 @@ import artishok.entities.User;
 import artishok.entities.enums.UserRole;
 import artishok.repositories.UserRepository;
 import artishok.security.JwtTokenUtil;
-import artishok.services.EmailVerificationService;
-import artishok.services.TokenBlacklistService;
+import artishok.services.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,11 +16,13 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,6 +39,8 @@ import java.util.Map;
 public class AuthController {
 	@Autowired
 	private EmailVerificationService emailVerificationService;
+	@Autowired
+	private ImageService imageService;
 	@Autowired
 	private AuthenticationManager authenticationManager;
 	@Autowired
@@ -82,7 +85,57 @@ public class AuthController {
 				.ok(Map.of("success", true, "message", "Регистрация успешна. Проверьте email для подтверждения.",
 						"userId", user.getId(), "email", user.getEmail()));
 	}
+	@PostMapping(value = "/register-with-avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@Operation(summary = "Регистрация с загрузкой аватара")
+	public ResponseEntity<?> registerWithAvatar(
+	        @RequestParam("email") String email,
+	        @RequestParam("password") String password,
+	        @RequestParam("fullName") String fullName,
+	        @RequestParam("role") UserRole role,
+	        @RequestParam(value = "phoneNumber", required = false) String phoneNumber,
+	        @RequestParam(value = "bio", required = false) String bio,
+	        @RequestParam(value = "avatarFile", required = false) MultipartFile avatarFile) {
 
+	    // Вся логика регистрации как в обычном register
+	    if (userRepository.existsByEmail(email)) {
+	        return ResponseEntity.badRequest().body(Map.of("error", "Email уже используется"));
+	    }
+
+	    if (phoneNumber != null && userRepository.existsByPhoneNumber(phoneNumber)) {
+	        return ResponseEntity.badRequest().body(Map.of("error", "Номер телефона уже используется"));
+	    }
+
+	    User user = new User();
+	    user.setEmail(email);
+	    user.setPasswordHash(passwordEncoder.encode(password));
+	    user.setFullName(fullName);
+	    user.setRole(role);
+	    user.setPhoneNumber(phoneNumber);
+	    user.setBio(bio);
+	    user.setRegistrationDate(LocalDateTime.now());
+	    user.setIsActive(false);
+
+	    // Загружаем аватар если есть
+	    if (avatarFile != null && !avatarFile.isEmpty()) {
+	        try {
+	            String avatarUrl = imageService.uploadImage(avatarFile, "avatar", null);
+	            user.setAvatarUrl(avatarUrl);
+	        } catch (Exception e) {
+	            // Логируем ошибку, но продолжаем регистрацию
+	            System.out.println("Failed to upload avatar");
+	        }
+	    }
+
+	    userRepository.save(user);
+	    emailVerificationService.sendVerificationEmail(user);
+
+	    return ResponseEntity.ok(Map.of(
+	        "success", true,
+	        "message", "Регистрация успешна. Проверьте email для подтверждения.",
+	        "userId", user.getId(),
+	        "email", user.getEmail()
+	    ));
+	}
 	@Operation(summary = "Вход в систему")
 	@ApiResponses(value = { @ApiResponse(responseCode = "200", description = "Вход успешен"),
 			@ApiResponse(responseCode = "400", description = "Неверные учетные данные") })
