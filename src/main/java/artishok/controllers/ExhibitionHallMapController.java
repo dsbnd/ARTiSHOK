@@ -3,6 +3,9 @@ package artishok.controllers;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import artishok.entities.ExhibitionEvent;
+import artishok.services.ExhibitionEventService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +22,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 public class ExhibitionHallMapController {
     private final ExhibitionHallMapService exhibitionHallMapService;
     private final ImageService imageService;
+    private final ExhibitionEventService eventService;
 
-    public ExhibitionHallMapController(ExhibitionHallMapService exhibitionHallMapService, 
-                                      ImageService imageService) {
+    public ExhibitionHallMapController(
+            ExhibitionHallMapService exhibitionHallMapService,
+            ImageService imageService,
+            ExhibitionEventService eventService) {
         this.exhibitionHallMapService = exhibitionHallMapService;
         this.imageService = imageService;
+        this.eventService = eventService;
     }
 
     @GetMapping
@@ -87,24 +94,28 @@ public class ExhibitionHallMapController {
             @RequestParam("name") String name,
             @RequestParam("exhibitionEventId") Long exhibitionEventId,
             @RequestParam(value = "mapImage", required = false) MultipartFile mapImage) {
-        
+
         try {
+            // Получаем событие
+            ExhibitionEvent event = eventService.getExhibitionEventById(exhibitionEventId)
+                    .orElseThrow(() -> new IllegalArgumentException("Событие не найдено с ID: " + exhibitionEventId));
+
+            // Создаём карту
             ExhibitionHallMap map = new ExhibitionHallMap();
             map.setName(name);
-            // Здесь нужно будет установить exhibitionEvent через репозиторий
-            // map.setExhibitionEvent(eventService.findById(exhibitionEventId));
-            
+            map.setExhibitionEvent(event); // ✅ Вот это критически важно
+
             ExhibitionHallMap savedMap = exhibitionHallMapService.saveExhibitionHallMap(map);
-            
-            // Загружаем изображение если есть
+
+            // Загружаем изображение, если есть
             if (mapImage != null && !mapImage.isEmpty()) {
                 String mapImageUrl = imageService.uploadImage(mapImage, "map", savedMap.getId());
                 savedMap.setMapImageUrl(mapImageUrl);
                 savedMap = exhibitionHallMapService.saveExhibitionHallMap(savedMap);
             }
-            
+
             return ResponseEntity.ok(savedMap);
-            
+
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));

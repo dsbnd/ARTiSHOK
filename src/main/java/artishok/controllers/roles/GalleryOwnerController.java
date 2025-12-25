@@ -921,47 +921,6 @@ public class GalleryOwnerController {
 					.body(Map.of("error", "Ошибка отклонения бронирования: " + e.getMessage()));
 		}
 	}
-//	@PostMapping("/exhibitions/{id}/upload-map")
-//	@Operation(summary = "Загрузить изображение карты зала")
-//	public ResponseEntity<?> uploadHallMapImage(@PathVariable("id") Long id,
-//												@RequestParam("file") MultipartFile file) {
-//		try {
-//			User currentUser = userService.getCurrentUser();
-//
-//			Optional<ExhibitionEvent> exhibitionOpt = exhibitionEventService.getExhibitionEventById(id);
-//			if (!exhibitionOpt.isPresent()) {
-//				return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//						.body(Map.of("error", "Выставка не найдена"));
-//			}
-//
-//			ExhibitionEvent exhibition = exhibitionOpt.get();
-//			Long galleryId = exhibition.getGallery().getId();
-//
-//			if (!galleryService.canOwnerUpdateGallery(currentUser.getId(), galleryId)) {
-//				return ResponseEntity.status(HttpStatus.FORBIDDEN)
-//						.body(Map.of("error", "Нет прав на загрузку карты"));
-//			}
-//
-//			// Сохраняем файл и получаем URL
-//			String imageUrl = fileStorageService.saveFile(file);
-//
-//			ExhibitionHallMap hallMap = new ExhibitionHallMap();
-//			hallMap.setExhibitionEvent(exhibition);
-//			hallMap.setName("План зала");
-//			hallMap.setMapImageUrl(imageUrl);
-//
-//			ExhibitionHallMap savedHallMap = exhibitionHallMapService.saveExhibitionHallMap(hallMap);
-//
-//			return ResponseEntity.ok(Map.of(
-//					"success", true,
-//					"message", "Карта зала загружена",
-//					"hallMap", convertHallMapToDTO(savedHallMap)
-//			));
-//		} catch (Exception e) {
-//			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-//					.body(Map.of("error", "Ошибка загрузки: " + e.getMessage()));
-//		}
-//	}
 
 	@PostMapping("/exhibitions/{id}/stand")
 	@Operation(summary = "Создать стенд с координатами")
