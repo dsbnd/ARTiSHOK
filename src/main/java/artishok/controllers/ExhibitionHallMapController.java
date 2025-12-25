@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
-@RequestMapping("/api/maps")
+@RequestMapping("/exhibition-hall-maps")
 public class ExhibitionHallMapController {
     private final ExhibitionHallMapService exhibitionHallMapService;
     private final ImageService imageService;
