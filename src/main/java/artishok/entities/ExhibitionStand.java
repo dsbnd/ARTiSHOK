@@ -1,5 +1,6 @@
 package artishok.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,6 +25,7 @@ public class ExhibitionStand {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "exhibition_hall_map_id", nullable = false)
+	@JsonIgnoreProperties({"exhibitionStands"})
     private ExhibitionHallMap exhibitionHallMap;
 
     @Column(name = "stand_number", nullable = false)

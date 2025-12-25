@@ -53,10 +53,20 @@ public class ExhibitionHallMapController {
     @ApiResponse(responseCode = "200", description = "Карты найдены")
     @ApiResponse(responseCode = "204", description = "Карты не найдены")
     public ResponseEntity<List<ExhibitionHallMap>> getMapsByEventId(@PathVariable("eventId") Long eventId) {
-        List<ExhibitionHallMap> maps = exhibitionHallMapService.getExhibitionHallMapsByEventId(eventId);
+        // Используем метод с загрузкой стендов
+        List<ExhibitionHallMap> maps = exhibitionHallMapService.getExhibitionHallMapsByEventIdWithStands(eventId);
+
         if (maps.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
+
+        // Убедитесь, что стенды загружены
+        maps.forEach(map -> {
+            if (map.getExhibitionStands() != null) {
+                System.out.println("Карта " + map.getId() + " имеет " + map.getExhibitionStands().size() + " стендов");
+            }
+        });
+
         return ResponseEntity.ok(maps);
     }
 
@@ -233,5 +243,14 @@ public class ExhibitionHallMapController {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
         }
+    }
+    @GetMapping("/{id}/with-stands")
+    @Operation(summary = "Получить карту зала со стендами")
+    @ApiResponse(responseCode = "200", description = "Карта найдена")
+    @ApiResponse(responseCode = "404", description = "Карта не найдена")
+    public ResponseEntity<ExhibitionHallMap> getHallMapWithStands(@PathVariable("id") Long id) {
+        Optional<ExhibitionHallMap> map = exhibitionHallMapService.getExhibitionHallMapByIdWithStands(id);
+        return map.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }
