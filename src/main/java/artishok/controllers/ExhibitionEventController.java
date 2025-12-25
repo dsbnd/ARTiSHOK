@@ -24,6 +24,7 @@ public class ExhibitionEventController {
     @ApiResponse(responseCode = "204", description = "События не найдены")
     public ResponseEntity<List<ExhibitionEvent>> getAllExhibitionEvents() {
         List<ExhibitionEvent> events = exhibitionEventService.getAllExhibitionEvents();
+        
         if (events.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
@@ -34,7 +35,7 @@ public class ExhibitionEventController {
     @Operation(summary = "Получить выставочное событие по ID")
     @ApiResponse(responseCode = "200", description = "Событие найдено")
     @ApiResponse(responseCode = "404", description = "Событие не найдено")
-    public ResponseEntity<ExhibitionEvent> getExhibitionEventById(@PathVariable Long id) {
+    public ResponseEntity<ExhibitionEvent> getExhibitionEventById(@PathVariable("id") Long id) {
         Optional<ExhibitionEvent> event = exhibitionEventService.getExhibitionEventById(id);
         return event.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -44,7 +45,7 @@ public class ExhibitionEventController {
     @Operation(summary = "Получить события по ID галереи")
     @ApiResponse(responseCode = "200", description = "События найдены")
     @ApiResponse(responseCode = "204", description = "События не найдены")
-    public ResponseEntity<List<ExhibitionEvent>> getEventsByGalleryId(@PathVariable Long galleryId) {
+    public ResponseEntity<List<ExhibitionEvent>> getEventsByGalleryId(@PathVariable("galleryId") Long galleryId) {
         List<ExhibitionEvent> events = exhibitionEventService.getExhibitionEventsByGalleryId(galleryId);
         if (events.isEmpty()) {
             return ResponseEntity.noContent().build();
@@ -64,7 +65,7 @@ public class ExhibitionEventController {
     @Operation(summary = "Обновить выставочное событие")
     @ApiResponse(responseCode = "200", description = "Событие успешно обновлено")
     @ApiResponse(responseCode = "404", description = "Событие не найдено")
-    public ResponseEntity<ExhibitionEvent> updateExhibitionEvent(@PathVariable Long id, @RequestBody ExhibitionEvent exhibitionEvent) {
+    public ResponseEntity<ExhibitionEvent> updateExhibitionEvent(@PathVariable("id") Long id, @RequestBody ExhibitionEvent exhibitionEvent) {
         if (!exhibitionEventService.getExhibitionEventById(id).isPresent()) {
             return ResponseEntity.notFound().build();
         }
@@ -76,7 +77,7 @@ public class ExhibitionEventController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить выставочное событие")
     @ApiResponse(responseCode = "200", description = "Событие успешно удалено")
-    public ResponseEntity<Void> deleteExhibitionEvent(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteExhibitionEvent(@PathVariable("id") Long id) {
         exhibitionEventService.deleteExhibitionEvent(id);
         return ResponseEntity.ok().build();
     }
