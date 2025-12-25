@@ -31,7 +31,7 @@ public class GalleryController {
     @ApiResponse(responseCode = "200", description = "Список галерей успешно получен")
     @ApiResponse(responseCode = "204", description = "Галереи не найдены")
     public ResponseEntity<List<Gallery>> getAllGalleries() {
-        List<Gallery> galleries = galleryService.getAllGalleries();
+        List<Gallery> galleries = galleryService.getAllGalleries();       
         if (galleries.isEmpty()) {
             return ResponseEntity.noContent().build();
         }
