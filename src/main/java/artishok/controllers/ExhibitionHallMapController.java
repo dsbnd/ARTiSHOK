@@ -42,7 +42,7 @@ public class ExhibitionHallMapController {
     @Operation(summary = "Получить карту зала по ID")
     @ApiResponse(responseCode = "200", description = "Карта найдена")
     @ApiResponse(responseCode = "404", description = "Карта не найдена")
-    public ResponseEntity<ExhibitionHallMap> getExhibitionHallMapById(@PathVariable Long id) {
+    public ResponseEntity<ExhibitionHallMap> getExhibitionHallMapById(@PathVariable("id") Long id) {
         Optional<ExhibitionHallMap> map = exhibitionHallMapService.getExhibitionHallMapById(id);
         return map.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -52,7 +52,7 @@ public class ExhibitionHallMapController {
     @Operation(summary = "Получить карты по ID события")
     @ApiResponse(responseCode = "200", description = "Карты найдены")
     @ApiResponse(responseCode = "204", description = "Карты не найдены")
-    public ResponseEntity<List<ExhibitionHallMap>> getMapsByEventId(@PathVariable Long eventId) {
+    public ResponseEntity<List<ExhibitionHallMap>> getMapsByEventId(@PathVariable("eventId") Long eventId) {
         List<ExhibitionHallMap> maps = exhibitionHallMapService.getExhibitionHallMapsByEventId(eventId);
         if (maps.isEmpty()) {
             return ResponseEntity.noContent().build();
@@ -106,7 +106,7 @@ public class ExhibitionHallMapController {
     @ApiResponse(responseCode = "200", description = "Изображение успешно загружено")
     @ApiResponse(responseCode = "404", description = "Карта не найдена")
     public ResponseEntity<?> uploadMapImage(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestParam("file") MultipartFile file) {
         
         try {
@@ -140,7 +140,7 @@ public class ExhibitionHallMapController {
     @ApiResponse(responseCode = "200", description = "Карта успешно обновлена")
     @ApiResponse(responseCode = "404", description = "Карта не найдена")
     public ResponseEntity<ExhibitionHallMap> updateExhibitionHallMap(
-            @PathVariable Long id, 
+            @PathVariable("id") Long id, 
             @RequestBody ExhibitionHallMap exhibitionHallMap) {
         
         if (!exhibitionHallMapService.getExhibitionHallMapById(id).isPresent()) {
@@ -191,7 +191,7 @@ public class ExhibitionHallMapController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Удалить карту выставочного зала")
     @ApiResponse(responseCode = "200", description = "Карта успешно удалена")
-    public ResponseEntity<Void> deleteExhibitionHallMap(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteExhibitionHallMap(@PathVariable("id") Long id) {
         // Сначала удаляем изображение если есть
         ExhibitionHallMap map = exhibitionHallMapService.getExhibitionHallMapById(id).orElse(null);
         if (map != null && map.getMapImageUrl() != null) {
@@ -205,7 +205,7 @@ public class ExhibitionHallMapController {
     @DeleteMapping("/{id}/image")
     @Operation(summary = "Удалить изображение карты")
     @ApiResponse(responseCode = "200", description = "Изображение удалено")
-    public ResponseEntity<?> deleteMapImage(@PathVariable Long id) {
+    public ResponseEntity<?> deleteMapImage(@PathVariable("id") Long id) {
         
         try {
             ExhibitionHallMap map = exhibitionHallMapService.getExhibitionHallMapById(id)
