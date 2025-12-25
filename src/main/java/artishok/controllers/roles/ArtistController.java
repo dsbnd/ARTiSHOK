@@ -350,7 +350,8 @@ public class ArtistController {
 			if (!standBookings.isEmpty()) {
 				return ResponseEntity.badRequest().body(Map.of("error", "Стенд уже забронирован"));
 			}
-
+			stand.setStatus(StandStatus.PENDING);
+			exhibitionStandService.saveExhibitionStand(stand);
 			Booking booking = new Booking();
 			booking.setExhibitionStand(stand);
 			booking.setArtist(currentUser);
@@ -399,6 +400,7 @@ public class ArtistController {
 			}
 
 			booking.setStatus(BookingStatus.CANCELLED);
+
 			String reason = request != null ? request.get("reason") : "Отменено художником";
 
 			Booking savedBooking = bookingService.saveBooking(booking);
