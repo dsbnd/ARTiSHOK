@@ -53,7 +53,7 @@ public class ExhibitionStandController {
     @Operation(summary = "Получить стенд по ID")
     @ApiResponse(responseCode = "200", description = "Стенд найден")
     @ApiResponse(responseCode = "404", description = "Стенд не найден")
-    public ResponseEntity<StandResponseDto> getExhibitionStandById(@PathVariable Long id) {
+    public ResponseEntity<StandResponseDto> getExhibitionStandById(@PathVariable("id") Long id) {
         Optional<ExhibitionStand> stand = exhibitionStandService.getExhibitionStandById(id);
         return stand.map(s -> ResponseEntity.ok(new StandResponseDto(s)))
                 .orElse(ResponseEntity.notFound().build());
@@ -63,7 +63,7 @@ public class ExhibitionStandController {
     @Operation(summary = "Получить стенды по ID карты зала")
     @ApiResponse(responseCode = "200", description = "Стенды найдены")
     @ApiResponse(responseCode = "204", description = "Стенды не найдены")
-    public ResponseEntity<List<StandResponseDto>> getStandsByHallMapId(@PathVariable Long hallMapId) {
+    public ResponseEntity<List<StandResponseDto>> getStandsByHallMapId(@PathVariable("hallMapId") Long hallMapId) {
         List<ExhibitionStand> stands = exhibitionStandService.getExhibitionStandsByHallMapId(hallMapId);
         if (stands.isEmpty()) {
             return ResponseEntity.noContent().build();
@@ -116,7 +116,7 @@ public class ExhibitionStandController {
     @ApiResponse(responseCode = "200", description = "Стенд успешно обновлен")
     @ApiResponse(responseCode = "400", description = "Некорректные данные")
     @ApiResponse(responseCode = "404", description = "Стенд или карта зала не найдены")
-    public ResponseEntity<?> updateExhibitionStand(@PathVariable Long id, @RequestBody StandRequestDto standRequestDto) {
+    public ResponseEntity<?> updateExhibitionStand(@PathVariable("id") Long id, @RequestBody StandRequestDto standRequestDto) {
         try {
             // Находим существующий стенд
             ExhibitionStand existingStand = exhibitionStandService.getExhibitionStandById(id)
@@ -155,7 +155,7 @@ public class ExhibitionStandController {
     @Operation(summary = "Изменить статус стенда")
     @ApiResponse(responseCode = "200", description = "Статус успешно изменен")
     @ApiResponse(responseCode = "404", description = "Стенд не найден")
-    public ResponseEntity<StandResponseDto> changeStandStatus(@PathVariable Long id, @RequestParam String status) {
+    public ResponseEntity<StandResponseDto> changeStandStatus(@PathVariable("id") Long id, @RequestParam("status") String status) {
         Optional<ExhibitionStand> stand = exhibitionStandService.getExhibitionStandById(id);
         if (!stand.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -175,7 +175,7 @@ public class ExhibitionStandController {
     @Operation(summary = "Удалить выставочный стенд")
     @ApiResponse(responseCode = "200", description = "Стенд успешно удален")
     @ApiResponse(responseCode = "404", description = "Стенд не найден")
-    public ResponseEntity<Void> deleteExhibitionStand(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteExhibitionStand(@PathVariable("id") Long id) {
         if (!exhibitionStandService.getExhibitionStandById(id).isPresent()) {
             return ResponseEntity.notFound().build();
         }

@@ -159,7 +159,7 @@ public class AuthController {
 
 			return ResponseEntity.ok(Map.of("token", token, "user",
 					Map.of("id", user.getId(), "email", user.getEmail(), "fullName", user.getFullName(), "role",
-							user.getRole(), "avatarUrl", user.getAvatarUrl(), "isActive", user.getIsActive())));
+							user.getRole(), "avatarUrl", user.getAvatarUrl(), "isActive", user.getIsActive(), "phoneNumber", user.getPhoneNumber(), "bio", user.getBio())));
 		} catch (Exception e) {
 			return ResponseEntity.badRequest().body(Map.of("error", "Неверные учетные данные"));
 		}

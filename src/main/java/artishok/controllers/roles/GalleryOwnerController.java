@@ -186,7 +186,7 @@ public class GalleryOwnerController {
 	public ResponseEntity<?> getMyExhibitions(@RequestParam(value = "galleryId", required = false) Long galleryId,
 			@RequestParam(value = "status", required = false) String status,
 			@RequestParam(value = "page", defaultValue = "0") int page,
-			@RequestParam(value = "size", defaultValue = "10") int size) {
+			@RequestParam(value = "size", defaultValue = "20") int size) {
 
 		try {
 			User currentUser = userService.getCurrentUser();
