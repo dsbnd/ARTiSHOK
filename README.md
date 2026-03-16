@@ -1,5 +1,14 @@
 # Информационная система «АРТиШОК»
 
+![Java](https://img.shields.io/badge/Java-17%2B-blue?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.0-6DB33F?logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Hibernate](https://img.shields.io/badge/Hibernate-6-59666C?logo=hibernate&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-8-02303A?logo=gradle&logoColor=white)
+![MinIO](https://img.shields.io/badge/MinIO-S3_Storage-C72E49?logo=minio&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?logo=leaflet&logoColor=white)
+
 **АРТиШОК** — это платформа для цифровизации деятельности современных художественных галерей. Система решает проблему хаотичной организации выставок, предоставляя единую онлайн-среду для взаимодействия кураторов галерей и художников.
 
 Организация выставки часто сопряжена с разрозненной коммуникацией (в мессенджерах и почте), сложностями планирования пространства и потерей информации о произведениях. 
